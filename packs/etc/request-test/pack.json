@@ -1,0 +1,27 @@
+{
+  "id": "etc/request-test",
+  "name": "요청 올리기 시험",
+  "tagline": "올리는 길이 이어지는지 보는 팩",
+  "family": "기타",
+  "schoolLevels": [
+    "중학교"
+  ],
+  "units": [],
+  "educationalIntent": "교과 내용이 없는 시험용 팩입니다. 요청 올리기와 검토 화면이 이어지는지 확인합니다.",
+  "description": "시험이 끝나면 닫습니다.",
+  "creator": {
+    "nickname": "도름스",
+    "avatar": null
+  },
+  "players": {
+    "min": 2,
+    "max": 30
+  },
+  "stages": [
+    {
+      "file": "01",
+      "name": "사과 저울",
+      "difficulty": 2
+    }
+  ]
+}
