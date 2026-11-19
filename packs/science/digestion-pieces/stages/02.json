@@ -1,0 +1,22 @@
+{
+  "legend": {
+    "a": { "type": "button", "need": "third", "opens": [ "x" ] },
+    "b": { "type": "button", "need": "third", "opens": [ "y" ] },
+    "c": { "type": "button", "need": "third", "opens": [ "u" ] },
+    "d": { "type": "button", "need": "third", "opens": [ "v" ] },
+    "x": { "type": "bridge", "mode": "vanish" },
+    "y": { "type": "bridge", "mode": "vanish" },
+    "u": { "type": "bridge", "mode": "vanish" },
+    "v": { "type": "bridge", "mode": "vanish" },
+    "p": { "type": "crate", "need": "third" },
+    "f": { "type": "deco", "sprite": "bread" },
+    "w": { "type": "deco", "sprite": "stomach" },
+    "1": { "type": "sign", "texts": [ "입" ] },
+    "2": { "type": "sign", "texts": [ "식도" ] },
+    "3": { "type": "sign", "texts": [ "위: 여기 바닥에는 틈이 없어요", "위: 떼어 낸 조각을 더 밀고 가요" ] },
+    "4": { "type": "sign", "texts": [ "소장: 틈은 양쪽 단추를 같이 밟아야 열려요", "소장: 조각을 틈 위에 올려놓고 열어요" ] },
+    "5": { "type": "sign", "texts": [ "대장" ] },
+    "6": { "type": "sign", "texts": [ "몸속: 들어온 조각을 딛고 높은 턱을 넘어요" ] }
+  },
+  "hint": "위에서 떼어 낸 조각을 소장까지 밀어요. 소장에서도 양쪽 단추를 같이 밟아야 틈이 열려요."
+}

@@ -1,0 +1,13 @@
+{
+  "legend": {
+    "a": { "type": "button", "need": "third", "opens": [ "x" ] },
+    "b": { "type": "button", "need": "third", "opens": [ "y" ] },
+    "x": { "type": "bridge", "mode": "vanish" },
+    "y": { "type": "bridge", "mode": "vanish" },
+    "p": { "type": "crate", "need": "third" },
+    "f": { "type": "deco", "sprite": "bread" },
+    "s": { "type": "sign", "texts": [ "소장: 틈으로 빠질 수 있는 건 작은 조각이에요", "소장: 양쪽 단추를 같이 밟으면 조각이 떨어져요" ] },
+    "m": { "type": "sign", "texts": [ "몸속: 들어온 조각을 딛고 높은 턱을 넘어요" ] }
+  },
+  "hint": "빵에 묶인 조각은 양쪽 단추를 같이 밟아야 떨어져요. 조각을 틈으로 밀어 넣어요."
+}
