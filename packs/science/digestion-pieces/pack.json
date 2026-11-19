@@ -1,0 +1,13 @@
+{
+  "id": "science/digestion-pieces",
+  "name": "잘게 쪼개야 흡수돼요",
+  "tagline": "양쪽에서 같이 떼어 소장 틈으로",
+  "family": "과학",
+  "schoolLevels": ["중학교"],
+  "units": [{ "band": "ms2", "subject": "과학", "unit": "동물과 에너지" }],
+  "educationalIntent": "큰 영양소는 그대로는 흡수되지 않고, 잘게 쪼개져야 소장에서 흡수된다는 것을 몸으로 겪게 합니다. 소화가 위에서 다 끝나지 않고, 흡수되는 곳은 위가 아니라 소장이라는 점이 길에서 드러납니다.",
+  "description": "큰 음식 덩어리에 묶인 조각을 양쪽 단추를 같이 밟아 떼어 내고, 소장 벽의 틈으로 밀어 넣어 몸속으로 들여보냅니다. 둘째 스테이지에서는 위에서 떼어 낸 조각을 소장까지 밀고 가서, 소장에서도 양쪽에서 같이 틈을 열어야 합니다.",
+  "creator": { "nickname": "시험선생", "avatar": null },
+  "players": { "min": 2, "max": 30 },
+  "stages": [{ "file": "01", "name": "떼어 내야 빠져요", "difficulty": 2 }, { "file": "02", "name": "위에서 끝나지 않아요", "difficulty": 3 }]
+}
