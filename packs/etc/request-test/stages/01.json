@@ -1,0 +1,56 @@
+{
+  "legend": {
+    "l": {
+      "type": "pan",
+      "scale": "s",
+      "side": "left"
+    },
+    "r": {
+      "type": "pan",
+      "scale": "s",
+      "side": "right"
+    },
+    "u": {
+      "type": "bin",
+      "scale": "s"
+    },
+    "v": {
+      "type": "lever",
+      "scale": "s",
+      "does": "addsub"
+    },
+    "w": {
+      "type": "lever",
+      "scale": "s",
+      "does": "divide"
+    },
+    "x": {
+      "type": "bridge"
+    }
+  },
+  "scales": {
+    "s": {
+      "x": [
+        2,
+        4
+      ],
+      "left": {
+        "boxes": 2,
+        "marbles": [
+          1,
+          3
+        ]
+      },
+      "right": {
+        "boxes": 0
+      },
+      "opens": [
+        "x"
+      ],
+      "skin": {
+        "marble": "apple"
+      }
+    }
+  },
+  "hint": "요청 올리기를 시험하는 스테이지예요."
+}
