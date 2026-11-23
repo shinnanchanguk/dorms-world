@@ -63,7 +63,7 @@ jobs:
           if-no-files-found: ignore
   # 같은 온라인 확인을 같은 크기의 리눅스 러너에서도 돌린다. 윈도우만 떨어지면 윈도우 문제, 둘 다 떨어지면 러너 성능 문제로 가른다.
   online-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # ubuntu-latest(26.04)는 Playwright 가 아직 받지 않는다
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
