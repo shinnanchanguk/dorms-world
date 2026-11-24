@@ -69,7 +69,7 @@ const report = async (item, rest) => {
 
 async function waitCheck(pr, head) {
   // 이 작업이 연 요청의 자동 검사는 GitHub 가 '승인 필요'로 잡아 둔다(자동 작업이 연 요청이라서). 그 실행을 승인해 돌리고, 요청이 병합할 수 있는 상태가 될 때까지 기다린다.
-  const until = Date.now() + 12 * 60_000;
+  const until = Date.now() + 32 * 60_000;   // 팩 검사 작업 한도(30분)보다 조금 길게. 스테이지가 많은 팩은 검사만 13분이 걸린다
   let approved = new Set(), last = '';
   while (Date.now() < until) {
     await sleep(8000);
@@ -162,7 +162,7 @@ export async function publish(item) {
   }
   if (!check.ok) {
     const log = check.failed ? clean(tryly('gh', ['run', 'list', '-R', REPO, '--workflow', 'pack-check.yml', '--branch', branch, '--limit', '1', '--json', 'databaseId', '--jq', '.[0].databaseId']), 20) : '';
-    const why = check.why ?? (check.late ? '자동 검사가 12분 안에 끝나지 않았어요.' : `자동 검사에서 걸렸어요(운영 판 기준). ${clean(tryly('gh', ['run', 'view', log, '-R', REPO, '--log-failed']).split('\n').filter(l => /✗|×|FAIL|걸렸|어요|Error/.test(l)).slice(0, 4).map(l => l.split('\t').pop()).join(' / '), 380)}`);
+    const why = check.why ?? (check.late ? '자동 검사가 32분 안에 끝나지 않았어요.' : `자동 검사에서 걸렸어요(운영 판 기준). ${clean(tryly('gh', ['run', 'view', log, '-R', REPO, '--log-failed']).split('\n').filter(l => /✗|×|FAIL|걸렸|어요|Error/.test(l)).slice(0, 4).map(l => l.split('\t').pop()).join(' / '), 380)}`);
     tryly('gh', ['pr', 'close', pr, '-R', REPO, '--delete-branch', '--comment', why.slice(0, 500)]);
     return { result: 'failed', reason: why.slice(0, 500) };
   }

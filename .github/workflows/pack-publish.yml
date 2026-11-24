@@ -21,7 +21,7 @@ jobs:
   publish:
     if: github.ref == 'refs/heads/main' && github.repository == 'shinnanchanguk/dorms-world'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: publish   # 비밀값은 이 환경에만 있고, 이 환경은 main 에서만 쓸 수 있다
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
