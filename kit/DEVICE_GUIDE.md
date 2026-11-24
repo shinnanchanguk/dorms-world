@@ -29,7 +29,7 @@ export default counter;
 |---|---|
 | `tick(ctx, dt, touching)` | 매 걸음. `touching` 은 지금 이 물건에 닿은(위에 선) 도름이들 |
 | `use(ctx, p)` | 가까이에서 확인을 눌렀다. 무언가 했으면 `true` |
-| `useText(ctx)` | 확인 안내 글(없으면 이름으로 "확인: 등") |
+| `useText(ctx, p)` | 확인 안내 글(없으면 이름으로 "확인: 등"). `p` 는 안내를 볼 도름이(든 물건에 따라 글을 바꿀 때). 안내 글과 실제로 누를 때 하는 일이 같아야 한다: 안내가 '친구 차례'라면 `use` 도 아무것도 안 하고 `true` 를 돌려준다 |
 | `frame(ctx)` | 몇째 그림(frames)을 그릴지 |
 | `ctx.vars` | 물건마다 수 4칸. 방 안 모두에게 저절로 맞춰진다. **상태는 여기에만 둔다** |
 | `vars[0]` | 0 이 아니면 그 물건 종류의 `opens` 다리가 켜진다 |
@@ -39,6 +39,9 @@ export default counter;
 | `ctx.shove(p, px)` | 도름이를 옆으로 민다(바람, 물살, 꿈틀 운동) |
 | `ctx.holding(p)`, `ctx.take(p)`, `ctx.give(p, 이름)` | 든 물건 이름 보기, 든 물건 받아 없애기, `"stock": true` 물건을 손에 쥐여 주기. 넣으면 바뀌어 나오는 장치(음식 → 잘게 부순 음식, 재료 → 부품) |
 | `ctx.peek(이름)` | 다른 장치의 수 4칸 읽기(장치끼리 잇기) |
+| `ctx.takes`, `ctx.gives` | things.json 의 `takes`(받는 물건 이름들)와 `gives`(내주는 물건 이름). 같은 움직임을 교과마다 다른 물건으로 쓰게 한다. 물건을 든 도름이의 확인은 `takes` 에 그 물건을 적은 장치만 먼저 받는다 |
+
+`useText`, `label`, `frame` 은 화면을 그릴 때 불리므로 읽기만 한다(여기서 `vars` 를 바꾸거나 `give` 를 불러도 아무 일도 없다).
 | `p.i` | 도름이 차례. 사람마다 다른 일을 시키는 장치(짝수만 들 수 있는 열쇠 등) |
 
 지킬 것(검사 `tests/behaviors-rules.test.ts` 가 문법 나무로 먼저 거르고, 운영자가 병합할 때 한 줄씩 다시 읽는다. 이 검사 파일과 `platform/behavior.ts` 는 요청이 고칠 수 없다)

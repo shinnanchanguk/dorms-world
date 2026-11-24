@@ -4,7 +4,7 @@ import { T, type Stage } from './stage';
 import { actionAt, atDoor, bridgeSolid, createWorld, ropeLinks, type Action, type Player, type World } from './sim';
 import { INKS, type Sprite } from './sprite';
 import { itemRect, itemShown } from './things';
-import { ctxFor, itemLabel, thingActionAt, thingActionText } from './thing-sim';
+import { itemLabel, readCtx, thingActionAt, thingActionText } from './thing-sim';
 import { drawGraphBack, drawGraphFront, graphHud, latexText } from './graph/draw';
 import { hasOldHangul, oldHangulRuns } from './text';
 
@@ -253,7 +253,7 @@ function drawThingSprite(c: CanvasRenderingContext2D, frames: Sprite[], now: num
 function frameOf(w: World, i: number) {
   const k = w.stage.things.kinds[w.stage.things.items[i].kind];
   let f = 0;
-  try { f = Math.floor(Number(k.behavior!.frame!(ctxFor(w, i)))); } catch { f = 0; }
+  try { f = Math.floor(Number(k.behavior!.frame!(readCtx(w, i)))); } catch { f = 0; }
   return Number.isInteger(f) && f >= 0 && f < k.frames.length ? f : 0;
 }
 

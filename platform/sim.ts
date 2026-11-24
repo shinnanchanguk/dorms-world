@@ -475,15 +475,17 @@ function ropeTick(w: World) {
     // 끌려가는 정도: 공중 1, 걸어가는 중 0.3, 땅에 버티고 선 사람 0.05
     const grip = (p: Player) => (!p.on ? 1 : p.want ? 0.3 : 0.05);
     const wa = grip(a), wb = grip(b), sum = wa + wb;
-    const ux = (bx - ax) / d, uy = (by - ay) / d, ex = d - max;
+    // 한 번 맞출 때 3px, 한 걸음(세 번)에 9px 까지만 당긴다(짝이 새로 묶이거나 문에서 나온 순간 한 번에 휙 끌려가지 않게)
+    const ux = (bx - ax) / d, uy = (by - ay) / d, ex = Math.min(3, d - max);
     ropeShift(w, a, ux * ex * wa / sum, uy * ex * wa / sum);
     ropeShift(w, b, -ux * ex * wb / sum, -uy * ex * wb / sum);
     // 한쪽이 벽에 막혀 덜 갔으면 남은 만큼 다른 쪽이 끌려간다
+    const target = d - ex;   // 이번 걸음에 닿을 거리
     for (const q of [b, a]) {
       [ax, ay] = mid(a); [bx, by] = mid(b);
       d = Math.hypot(bx - ax, by - ay);
-      if (d <= max + 0.01) break;
-      const e = d - max, vx = (bx - ax) / d, vy = (by - ay) / d;
+      if (d <= target + 0.01) break;
+      const e = d - target, vx = (bx - ax) / d, vy = (by - ay) / d;
       if (q === b) ropeShift(w, b, -vx * e, -vy * e); else ropeShift(w, a, vx * e, vy * e);
     }
     // 서로 멀어지는 세로 속도는 줄이 받아 낸다(매달린 친구가 계속 빨라지며 떨어지지 않게)

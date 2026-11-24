@@ -125,7 +125,7 @@ export function parseKinds(json: unknown, sprites: Record<string, Sprite>): Reco
     out[id] = {
       id, name: d.name.trim(), frames, cell, w: frames[0].w * cell, h: frames[0].h * cell, body, touch, power, move, label, need,
       with: (d.with as string) ?? '', without: (d.without as string) ?? '', behavior, opens: opens as string[], stock: d.stock === true,
-      takes: takes as string[], gives: (d.gives as string) ?? '',
+      takes: Object.freeze([...takes]) as string[], gives: (d.gives as string) ?? '',
     };
   }
   for (const k of Object.values(out)) {

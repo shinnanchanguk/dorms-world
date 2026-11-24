@@ -74,7 +74,7 @@ export function thingActionAt(w: World, p: Player): ThingAction | null {
     const dev = nearestDevice(w, p);
     if (dev >= 0) {
       const k = kindOf(w, dev), id = kindOf(w, held).id;
-      if (k.takes.includes(id) || (!k.takes.length && k.behavior!.useText)) {
+      if (k.takes.includes(id)) {
         const rest = heldAction(w, p, held);
         return { do: 'use', item: dev, text: deviceText(w, dev, p), else: rest.do === 'no' ? undefined : rest };
       }
@@ -100,7 +100,7 @@ function nearestDevice(w: World, p: Player) {
 }
 function deviceText(w: World, i: number, p: Player) {
   let text = '';
-  try { text = String(kindOf(w, i).behavior!.useText?.(ctxFor(w, i), view(p)) ?? '').slice(0, 20); } catch { text = ''; }
+  try { text = String(kindOf(w, i).behavior!.useText?.(readCtx(w, i), view(p)) ?? '').slice(0, 20); } catch { text = ''; }
   return text || `확인: ${kindOf(w, i).name}`;
 }
 
@@ -127,6 +127,12 @@ function emptyAction(w: World, p: Player): ThingAction | null {
   const reach = { x: p.x - 8, y: p.y - 6, w: p.w + 16, h: p.h + 10 };
   // 선생님이 더한 움직임 가운데 확인으로 쓰는 것(가장 가까운 것 하나)
   const use = nearestDevice(w, p);
+  // 발밑(몸과 겹치는 곳)에 내려놓은 물건이 있으면 장치보다 그 물건을 먼저 든다(장치 옆에 떨어뜨린 것도 다시 주울 수 있게)
+  for (let i = 0; i < s.items.length; i++) {
+    if (use < 0) break;
+    if (kindOf(w, i).body !== 'carry' || w.h.items[i].at !== 0 || !shown(w, i)) continue;
+    if (overlap(p, rectAt(w, i))) return { do: 'pick', item: i };
+  }
   if (use >= 0) return { do: 'use', item: use, text: deviceText(w, use, p) };
   let best = -1, near = Infinity;
   for (let i = 0; i < s.items.length; i++) {
@@ -166,17 +172,28 @@ export function thingsRemove(w: World, pi: number) {
 
 /** 움직임에 건네는 도름이 보기. 실제 도름이를 넘기지 않는다(움직임이 자리·문 상태를 바꿔 방 안 화면이 갈라지지 않게). 바꿀 수 있는 것은 vy 하나. */
 function view(p: Player): BehaviorPlayer {
-  return { x: p.x, y: p.y, w: p.w, h: p.h, i: p.i, on: p.on, get vy() { return p.vy; }, set vy(v: number) { p.vy = Math.max(-1000, Math.min(1000, num(v))); } };
+  return { x: p.x, y: p.y, w: p.w, h: p.h, get i() { return p.i; }, on: p.on, get vy() { return p.vy; }, set vy(v: number) { p.vy = Math.max(-1000, Math.min(1000, num(v))); } };
 }
 
 /** 움직임에 건네는 손잡이. 판의 상태는 이것으로만 바꾼다(움직임이 판을 망가뜨리지 않게). */
+/** 움직임이 건넨 도름이를 판의 자리 번호로 바꾼다. 범위 밖이거나 정수가 아니면 -1(움직임이 판 배열의 다른 칸을 건드리지 못하게). */
+const seatOf = (w: World, q: BehaviorPlayer | undefined) => { const k = q?.i; return typeof k === 'number' && Number.isInteger(k) && k >= 0 && k < w.players.length ? k : -1; };
+const NO_OP = () => {};
+/**
+ * 그리기·안내 글용 손잡이: 읽기만 한다(useText·label·frame 은 화면마다 다른 때에 불리므로 판을 바꾸면 안 된다).
+ * vars 는 사본이고, 바꾸는 손잡이는 아무 일도 하지 않는다.
+ */
+export function readCtx(w: World, i: number): BehaviorCtx {
+  const c = ctxFor(w, i);
+  return { ...c, vars: Object.freeze(w.h.items[i].v.slice()) as number[], respawn: NO_OP, launch: NO_OP, remove: NO_OP, place: NO_OP, shove: NO_OP, take: () => null, give: () => false };
+}
 export function ctxFor(w: World, i: number): BehaviorCtx {
   const st = w.h.items[i];
   return {
     vars: st.v, rect: rectAt(w, i), t: w.t, players: w.players.length, takes: kindOf(w, i).takes, gives: kindOf(w, i).gives,
     isOn: ch => w.active.has(ch),
-    respawn: q => { const p = w.players[q.i]; if (p) respawn(w, p); },
-    launch: (q, cells) => { const p = w.players[q.i]; if (!p) return; p.vy = -Math.sqrt(2 * G * Math.max(2, Math.min(10, num(cells))) * T); p.on = false; p.coyote = 0; },
+    respawn: q => { const k = seatOf(w, q); if (k >= 0) respawn(w, w.players[k]); },
+    launch: (q, cells) => { const k = seatOf(w, q); if (k < 0) return; const p = w.players[k]; p.vy = -Math.sqrt(2 * G * Math.max(2, Math.min(10, num(cells))) * T); p.on = false; p.coyote = 0; },
     remove: () => { st.at = 1; st.holder = -1; },
     place: (x, y) => {
       const k = kindOf(w, i);
@@ -185,26 +202,28 @@ export function ctxFor(w: World, i: number): BehaviorCtx {
       st.y = Math.max(-2 * T, Math.min(w.stage.rows * T - k.h, num(y)));
     },
     shove: (q, px) => {
-      const p = w.players[q.i]; if (!p || p.inDoor) return;
+      const k = seatOf(w, q); if (k < 0) return; const p = w.players[k]; if (p.inDoor) return;
       const d = Math.max(-60, Math.min(60, num(px))), n = Math.ceil(Math.abs(d)), sx = d / Math.max(1, n);
       const free = (x: number) => { const r = { x, y: p.y, w: p.w, h: p.h }; return x >= 0 && x + p.w <= w.stage.cols * T && !hitsTiles(w, r) && !hitsBridge(w, r) && crateAt(w, r) < 0 && !thingSolidAt(w, r, p); };
       for (let k = 0; k < n && free(p.x + sx); k++) p.x += sx;
     },
-    holding: q => { const h = heldBy(w.h, q.i); return h >= 0 ? kindOf(w, h).id : null; },
+    holding: q => { const k = seatOf(w, q); if (k < 0) return null; const h = heldBy(w.h, k); return h >= 0 ? kindOf(w, h).id : null; },
     take: q => {
-      const h = heldBy(w.h, q.i); if (h < 0) return null;
+      const k = seatOf(w, q); if (k < 0) return null;
+      const h = heldBy(w.h, k); if (h < 0) return null;
       const hs = w.h.items[h]; hs.at = 1; hs.holder = -1; hs.vy = 0;
       return kindOf(w, h).id;
     },
     give: (q, thing) => {
-      const p = w.players[q.i];
-      if (!p || p.inDoor || heldBy(w.h, q.i) >= 0 || typeof thing !== 'string') return false;
-      if (holdingPiece(w.g, q.i) >= 0 || w.g.bucket?.holder === q.i || w.g.sled?.rider === q.i) return false;
+      const k = seatOf(w, q); if (k < 0) return false;
+      const p = w.players[k];
+      if (p.inDoor || heldBy(w.h, k) >= 0 || typeof thing !== 'string') return false;
+      if (holdingPiece(w.g, k) >= 0 || w.g.bucket?.holder === k || w.g.sled?.rider === k) return false;
       for (let j = 0; j < w.stage.things.items.length; j++) {
-        const k = kindOf(w, j), js = w.h.items[j];
-        if (k.id !== thing || !k.stock || js.at !== 1) continue;
-        js.at = 2; js.holder = q.i; js.vy = 0;
-        js.x = p.x + p.w / 2 - k.w / 2; js.y = p.y - k.h - 3;
+        const kj = kindOf(w, j), js = w.h.items[j];
+        if (kj.id !== thing || !kj.stock || js.at !== 1) continue;
+        js.at = 2; js.holder = k; js.vy = 0;
+        js.x = p.x + p.w / 2 - kj.w / 2; js.y = p.y - kj.h - 3;
         return true;
       }
       return false;
@@ -219,8 +238,7 @@ export function ctxFor(w: World, i: number): BehaviorCtx {
 export function itemLabel(w: World, i: number): string {
   const k = kindOf(w, i);
   if (!k.behavior?.label) return k.label;
-  try { const t = k.behavior.label(ctxFor(w, i)); return t == null ? k.label : String(t).slice(0, 12); } catch { return k.label; }
-  finally { tidy(w.h.items[i].v); }
+  try { const t = k.behavior.label(readCtx(w, i)); return t == null ? k.label : String(t).slice(0, 12); } catch { return k.label; }
 }
 const tidy = (v: number[]) => { v.length = VARS; for (let k = 0; k < VARS; k++) v[k] = num(v[k]); };
 /** 움직임을 부른다. 움직임이 오류를 내도 판은 멈추지 않는다(그 걸음의 일만 건너뛴다). */

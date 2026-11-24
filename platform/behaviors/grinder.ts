@@ -13,18 +13,18 @@ const grinder: Behavior = {
   use: (ctx, p) => {
     if (ctx.vars[1] === 0) {
       const held = ctx.holding(p);
-      if (held == null || !ctx.takes.includes(held)) return false;
+      if (held == null || !ctx.takes.includes(held)) return false;   // 넣을 것이 아니면 다른 장치나 내려놓기로 넘긴다
       ctx.take(p);
       ctx.vars[1] = 1; ctx.vars[2] = 0; ctx.vars[3] = 0;
       return true;
     }
     if (ctx.vars[1] === 1) {
-      if (ctx.players > 1 && ctx.vars[3] === p.i + 1) return false;
+      if (ctx.players > 1 && ctx.vars[3] === p.i + 1) return true;   // 친구 차례: 누름을 받기만 한다(안내 글과 같게, 든 것을 떨어뜨리지 않게)
       ctx.vars[2] += 1; ctx.vars[3] = p.i + 1;
       if (ctx.vars[2] >= NEED) ctx.vars[1] = 2;
       return true;
     }
-    if (ctx.holding(p) != null || !ctx.gives) return false;
+    if (ctx.holding(p) != null || !ctx.gives) return true;   // 손이 차 있으면 꺼내지 않고 누름만 받는다
     if (!ctx.give(p, ctx.gives)) return false;
     ctx.vars[0] += 1; ctx.vars[1] = 0; ctx.vars[2] = 0; ctx.vars[3] = 0;
     return true;
