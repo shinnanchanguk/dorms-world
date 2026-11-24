@@ -160,6 +160,17 @@ describe('화면에 넣는 글', () => {
     expect(html).not.toMatch(/<[^>]*\son\w+=/);
   });
 
+  it('검토 화면의 만든 사람 줄: 도름스가 실어 준 보낸 선생님의 닉네임과 사진을 쓰고, 없으면 pack.json 값', () => {
+    const c = parseCreator(good)!;
+    const line = creatorLine(pack('korean/josa', '옛 이름'), true, c);
+    expect(line).toContain('@홍창욱');
+    expect(line).toContain(`src="https://dorms.school/api/world/avatar/${ID}"`);
+    expect(line).toContain('data-review');
+    const plain = creatorLine(pack('korean/josa', '옛 이름'), true, null);
+    expect(plain).toContain('@옛 이름');
+    expect(plain).toContain(DEFAULT_AVATAR);
+  });
+
   it('만든 사람 줄: pack.json 의 닉네임도 이스케이프하고, 속성 값을 깨고 나오지 못한다', () => {
     const line = creatorLine(pack('math/one', '"><img src=x onerror=alert(1)>'));
     expect(line).not.toMatch(/<img src=x/);

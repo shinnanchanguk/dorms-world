@@ -33,11 +33,13 @@ const lineSig = (f: Face) => `${f.photo}\n${f.nickname}`;
 
 /** 살펴보는 중인 요청의 팩은 실린 팩 모음에 없어서 따로 기억해 둔다(만든 사람 단추가 눌렸을 때 찾으려고). */
 let reviewPack: Pack | null = null;
+/** 살펴보는 요청을 보낸 선생님(도름스가 검토 응답에 실어 준 공개 값). 없으면 pack.json 의 닉네임과 기본 그림. */
+let reviewCreator: Creator | null = null;
 
 /** 카드와 팩 화면의 만든 사람 줄. 이 줄이 단추다. review 는 아직 실리지 않은 요청의 팩(도름스가 확인한 값이 아니므로 pack.json 값만 쓴다). */
-export function creatorLine(pack: Pack, review = false): string {
-  if (review) reviewPack = pack;
-  const f = faceOf(pack, review ? null : creatorOf(pack.id));
+export function creatorLine(pack: Pack, review = false, reviewer: Creator | null = null): string {
+  if (review) { reviewPack = pack; reviewCreator = reviewer; }
+  const f = faceOf(pack, review ? reviewCreator : creatorOf(pack.id));
   return `<button type="button" class="ar-creator w-creator" data-creator="${esc(pack.id)}"${review ? ' data-review' : ''} data-sig="${esc(lineSig(f))}" aria-haspopup="dialog" aria-label="${esc(lineLabel(f))}">${lineInner(f)}</button>`;
 }
 
@@ -114,7 +116,7 @@ const herePack = () => {
 
 function showProfile(pack: Pack, review: boolean, opener: HTMLElement) {
   const html = () => {
-    const creator = review ? null : creatorOf(pack.id);
+    const creator = review ? reviewCreator : creatorOf(pack.id);
     return { creator, body: profileBody(pack, creator, packsBy(PACKS, pack, creatorOf, creator), herePack()) };
   };
   const first = html();

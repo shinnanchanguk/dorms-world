@@ -4,6 +4,7 @@
  * 읽은 글은 모두 남이 쓴 것이다: 이름과 크기를 검사하고, 화면에는 글자로만 넣는다.
  */
 import { buildPack, type Pack, type PackJson } from '../platform/packs';
+import { parseCreator, type Creator } from './creators';
 
 export const REPO = 'shinnanchanguk/dorms-world';
 const API = 'https://api.github.com/repos/';
@@ -22,6 +23,7 @@ export type Review = {
   note?: string;             // 보낸 선생님이 운영자에게 남긴 한마디
   decisionNote?: string;     // 운영자가 돌려보내며 남긴 한마디
   update?: boolean;          // 이미 실려 있는 팩을 고친 판인가(승인하면 실린 팩이 통째로 바뀐다)
+  creator?: Creator | null;  // 보낸 선생님의 공개 프로필(도름스 검토 응답). 만든 사람 줄과 프로필 창이 쓴다
 };
 
 async function json(url: string): Promise<unknown> {
@@ -103,7 +105,7 @@ export async function loadDormsReview(id: string): Promise<Review> {
   let got: unknown;
   try { got = await r.json(); } catch { throw new Error('요청 내용을 읽지 못했어요. 잠시 뒤 다시 열어 주세요.'); }
   if (!got || typeof got !== 'object') throw new Error('요청 내용을 읽지 못했어요. 잠시 뒤 다시 열어 주세요.');
-  const d = got as { mode?: unknown; number?: unknown; packId?: unknown; sha?: unknown; status?: unknown; title?: unknown; note?: unknown; decisionNote?: unknown; author?: { nickname?: unknown }; files?: unknown };
+  const d = got as { mode?: unknown; number?: unknown; packId?: unknown; sha?: unknown; status?: unknown; title?: unknown; note?: unknown; decisionNote?: unknown; author?: { nickname?: unknown }; creator?: unknown; files?: unknown };
   const packId = str(d.packId, 90);
   if (!/^[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}$/.test(packId)) throw new Error('요청의 팩 이름을 읽지 못했어요.');
   const files = d.files && typeof d.files === 'object' && !Array.isArray(d.files) ? d.files as Record<string, unknown> : {};
@@ -134,7 +136,7 @@ export async function loadDormsReview(id: string): Promise<Review> {
     number: Number(d.number) || 0, title: str(d.title, 120), author: str(d.author?.nickname, 40), url: '',
     state: status === 'published' ? 'merged' : status === 'rejected' ? 'closed' : 'open', sha: str(d.sha, 64),
     pack: { ...pack, id: packId }, design: (store.get('DESIGN.md') ?? '').slice(0, 20000),
-    others: [...code, ...gone], extraPacks: [], source: 'dorms', status, note: str(d.note, 500), decisionNote: str(d.decisionNote, 500), update: d.mode === 'update',
+    others: [...code, ...gone], extraPacks: [], source: 'dorms', status, note: str(d.note, 500), decisionNote: str(d.decisionNote, 500), update: d.mode === 'update', creator: parseCreator(d.creator),
   };
 }
 
