@@ -92,12 +92,16 @@ describe('소화 여행 02 소장 벽 오르기', () => {
     for (const p of w.players) expect(p.y + p.h).toBeGreaterThan(top + 1);
   });
 
-  it('짝의 머리를 딛고 먼저 오른 뒤, 걸어가며 당기면 아래 짝이 뛰어 올라온다', () => {
+  it('영양소를 든 채 짝의 머리를 딛고 먼저 오른 뒤, 걸어가며 당기면 아래 짝이 뛰어 올라오고, 융털에 영양소 둘을 놓으면 문이 열린다', () => {
     const w = load('02');
     rest(w, 0.5);
     // 1 은 벽에 붙어 서고, 0 은 그 왼쪽에서 뛰어 1 의 머리에 올라선다
     for (let f = 0; f < 600 && w.players[1].x + w.players[1].w < wallX - 0.5; f++) step(w, [idle, { m: 1, j: false }], 1 / 60);
     for (let f = 0; f < 120; f++) step(w, [{ m: (cx(w, 0) < w.players[1].x - 30 ? 1 : cx(w, 0) > w.players[1].x - 22 ? -1 : 0) as -1 | 0 | 1, j: false }, idle], 1 / 60);
+    // 둘이 하나씩 영양소를 든다
+    press(w, 1); press(w, 0);
+    expect(heldBy(w.h, 0)).toBeGreaterThanOrEqual(0);
+    expect(heldBy(w.h, 1)).toBeGreaterThanOrEqual(0);
     let onHead = false;
     for (let f = 0; f < 120 && !onHead; f++) {
       step(w, [{ m: 1, j: f < 20 }, idle], 1 / 60);
@@ -111,6 +115,15 @@ describe('소화 여행 02 소장 벽 오르기', () => {
     // 0 이 오른쪽으로 걸어 당기는 동안 1 은 뛴다
     for (let f = 0; f < 300 && w.players[1].y + w.players[1].h > top + 0.5; f++) step(w, [{ m: 1, j: false }, { m: 1, j: f % 40 < 20 }], 1 / 60);
     expect(w.players[1].y + w.players[1].h).toBeLessThanOrEqual(top + 0.5);
+    expect(heldBy(w.h, 0)).toBeGreaterThanOrEqual(0);   // 든 채로 올라왔다
+    expect(heldBy(w.h, 1)).toBeGreaterThanOrEqual(0);
+    expect(w.active.has('y')).toBe(false);               // 영양소를 놓기 전에는 문 앞 벽이 막혀 있다
+    const goal = w.stage.things.goals[0];
+    walkAll(w, goal.x + goal.w / 2);
+    press(w, 0); press(w, 1);
+    expect(w.h.counts[0]).toBe(2);
+    rest(w, 0.1);
+    expect(w.active.has('y')).toBe(true);
     finish(w);
     expect(w.won).toBe(true);
   });

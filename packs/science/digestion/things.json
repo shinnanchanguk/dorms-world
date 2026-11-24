@@ -27,5 +27,11 @@
     ],
     "gives": "mush",
     "label": "위"
+  },
+  "nutrient": {
+    "name": "영양소",
+    "sprite": "nutrient",
+    "size": 3,
+    "body": "carry"
   }
 }
