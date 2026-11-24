@@ -1,0 +1,78 @@
+{
+  "legend": {
+    "s": {
+      "type": "sign",
+      "texts": [
+        "낱말: 부텨(부처). 사람을 가리켜요.",
+        "낱말: 부텨(부처). 높이는 대상이에요."
+      ]
+    },
+    "e": {
+      "type": "sign",
+      "texts": [
+        "ᄋᆡ"
+      ]
+    },
+    "i": {
+      "type": "sign",
+      "texts": [
+        "ᄋᆡ: 높이지 않는 사람·동물, 양성 모음 뒤에 써요."
+      ]
+    },
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "u"
+      ]
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "f": {
+      "type": "sign",
+      "texts": [
+        "의"
+      ]
+    },
+    "j": {
+      "type": "sign",
+      "texts": [
+        "의: 높이지 않는 사람·동물, 음성 모음 뒤에 써요."
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "v"
+      ]
+    },
+    "v": {
+      "type": "bridge"
+    },
+    "h": {
+      "type": "sign",
+      "texts": [
+        "ㅅ"
+      ]
+    },
+    "k": {
+      "type": "sign",
+      "texts": [
+        "ㅅ: 식물·사물이거나 높이는 대상일 때 써요."
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "w"
+      ]
+    },
+    "w": {
+      "type": "bridge"
+    }
+  },
+  "hint": "사람이어도 높이면 달라요. 말로 맞춰 골라요."
+}

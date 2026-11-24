@@ -1,0 +1,78 @@
+{
+  "legend": {
+    "s": {
+      "type": "sign",
+      "texts": [
+        "낱말: 불휘. 현대어 풀이: 뿌리가",
+        "낱말: 불휘. 끝 글자 휘의 모음: ㅟ"
+      ]
+    },
+    "e": {
+      "type": "sign",
+      "texts": [
+        "Ø (적지 않아요)"
+      ]
+    },
+    "i": {
+      "type": "sign",
+      "texts": [
+        "Ø: 앞말이 ㅣ나 반모음 ㅣ로 끝나면 적지 않아요."
+      ]
+    },
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "u"
+      ]
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "f": {
+      "type": "sign",
+      "texts": [
+        "ㅣ"
+      ]
+    },
+    "j": {
+      "type": "sign",
+      "texts": [
+        "ㅣ: 앞말이 ㅣ나 반모음 ㅣ가 아닌 모음으로 끝날 때예요."
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "v"
+      ]
+    },
+    "v": {
+      "type": "bridge"
+    },
+    "h": {
+      "type": "sign",
+      "texts": [
+        "이"
+      ]
+    },
+    "k": {
+      "type": "sign",
+      "texts": [
+        "이: 앞말이 자음으로 끝날 때 써요."
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "w"
+      ]
+    },
+    "w": {
+      "type": "bridge"
+    }
+  },
+  "hint": "조사를 적지 않는 길도 있어요. 말로 맞춰 골라요."
+}
