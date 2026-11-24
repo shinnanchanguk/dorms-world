@@ -1,0 +1,88 @@
+{
+  "id": "korean/josa-crossroads",
+  "name": "중세 국어 조사 갈림길",
+  "tagline": "조건을 맞춰 길을 여는 조사 규칙",
+  "family": "국어",
+  "schoolLevels": [
+    "고등학교"
+  ],
+  "units": [
+    {
+      "band": "hs2",
+      "subject": "화법과 언어",
+      "unit": "국어의 변화와 국어생활"
+    }
+  ],
+  "educationalIntent": "중세 국어 조사가 앞말의 조건(받침, 모음, 높임 여부)에 따라 모양이 정해지는 체계를 친구들과 말로 맞춰 가며 떠올립니다.",
+  "description": "서로 다른 단서를 본 친구들이 말로 맞춰, 앞말의 조건에 맞는 조사 모양의 길을 엽니다. 목적격, 주격, 서술격, 관형격, 부사격, 호격, 접속 조사와 앞말 모양이 바뀌는 말을 한 판씩 지납니다.",
+  "creator": {
+    "nickname": "보드라운고슴도치",
+    "avatar": null
+  },
+  "players": {
+    "min": 2,
+    "max": 30
+  },
+  "stages": [
+    {
+      "file": "01",
+      "name": "목적격 하나: 님금",
+      "difficulty": 1
+    },
+    {
+      "file": "02",
+      "name": "목적격 둘: 나",
+      "difficulty": 2
+    },
+    {
+      "file": "03",
+      "name": "주격: 불휘",
+      "difficulty": 3
+    },
+    {
+      "file": "04",
+      "name": "서술격: 땅",
+      "difficulty": 3
+    },
+    {
+      "file": "05",
+      "name": "관형격: 부텨",
+      "difficulty": 4
+    },
+    {
+      "file": "06",
+      "name": "내: 내가와 나의",
+      "difficulty": 4
+    },
+    {
+      "file": "07",
+      "name": "부사격: 바람",
+      "difficulty": 3
+    },
+    {
+      "file": "08",
+      "name": "호격: 님금하",
+      "difficulty": 2
+    },
+    {
+      "file": "09",
+      "name": "접속: 입시울",
+      "difficulty": 3
+    },
+    {
+      "file": "10",
+      "name": "'ㅎ' 종성 체언: 돌",
+      "difficulty": 4
+    },
+    {
+      "file": "11",
+      "name": "나모: 남기",
+      "difficulty": 5
+    },
+    {
+      "file": "12",
+      "name": "모두 한자리에",
+      "difficulty": 1
+    }
+  ]
+}

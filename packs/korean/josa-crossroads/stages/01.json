@@ -1,0 +1,78 @@
+{
+  "legend": {
+    "s": {
+      "type": "sign",
+      "texts": [
+        "낱말: 님금(임금). 끝 글자 금의 받침: ㅁ",
+        "낱말: 님금(임금). 끝 글자 금의 모음: ㅡ"
+      ]
+    },
+    "e": {
+      "type": "sign",
+      "texts": [
+        "ᄋᆞᆯ"
+      ]
+    },
+    "i": {
+      "type": "sign",
+      "texts": [
+        "ᄋᆞᆯ: 앞말에 받침이 있고 양성 모음일 때 써요."
+      ]
+    },
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "u"
+      ]
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "f": {
+      "type": "sign",
+      "texts": [
+        "을"
+      ]
+    },
+    "j": {
+      "type": "sign",
+      "texts": [
+        "을: 앞말에 받침이 있고 음성 모음일 때 써요."
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "v"
+      ]
+    },
+    "v": {
+      "type": "bridge"
+    },
+    "h": {
+      "type": "sign",
+      "texts": [
+        "를"
+      ]
+    },
+    "k": {
+      "type": "sign",
+      "texts": [
+        "를: 앞말에 받침이 없고 음성 모음일 때 써요."
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "w"
+      ]
+    },
+    "w": {
+      "type": "bridge"
+    }
+  },
+  "hint": "서로 다른 글이 보여요. 말로 맞춰 길을 골라요."
+}
