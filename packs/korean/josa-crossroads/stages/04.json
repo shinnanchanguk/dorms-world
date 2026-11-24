@@ -1,0 +1,78 @@
+{
+  "legend": {
+    "s": {
+      "type": "sign",
+      "texts": [
+        "낱말: 땅. 끝소리: ㅎ",
+        "낱말: 땅. 현대어 풀이: 땅이다"
+      ]
+    },
+    "e": {
+      "type": "sign",
+      "texts": [
+        "이"
+      ]
+    },
+    "i": {
+      "type": "sign",
+      "texts": [
+        "이: 주격 조사예요. 풀이가 ‘-이’, ‘-가’일 때 써요."
+      ]
+    },
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "u"
+      ]
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "f": {
+      "type": "sign",
+      "texts": [
+        "이라"
+      ]
+    },
+    "j": {
+      "type": "sign",
+      "texts": [
+        "이라: 서술격 조사예요. 자음 뒤, 풀이가 ‘-이다’일 때예요."
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "v"
+      ]
+    },
+    "v": {
+      "type": "bridge"
+    },
+    "h": {
+      "type": "sign",
+      "texts": [
+        "ㅣ라"
+      ]
+    },
+    "k": {
+      "type": "sign",
+      "texts": [
+        "ㅣ라: 서술격 조사예요. ㅣ가 아닌 모음 뒤에 써요."
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "w"
+      ]
+    },
+    "w": {
+      "type": "bridge"
+    }
+  },
+  "hint": "같은 이라도 풀이가 달라요. 말로 맞춰 골라요."
+}

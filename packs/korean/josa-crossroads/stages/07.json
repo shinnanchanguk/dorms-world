@@ -1,0 +1,78 @@
+{
+  "legend": {
+    "s": {
+      "type": "sign",
+      "texts": [
+        "낱말: 바람(ᄇᆞᄅᆞᆷ). 끝 글자의 모음: ㆍ",
+        "낱말: 바람(ᄇᆞᄅᆞᆷ). 현대어 풀이: 바람에"
+      ]
+    },
+    "e": {
+      "type": "sign",
+      "texts": [
+        "예"
+      ]
+    },
+    "i": {
+      "type": "sign",
+      "texts": [
+        "예: 앞말이 ㅣ로 끝날 때 써요."
+      ]
+    },
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "u"
+      ]
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "f": {
+      "type": "sign",
+      "texts": [
+        "애"
+      ]
+    },
+    "j": {
+      "type": "sign",
+      "texts": [
+        "애: 앞말의 모음이 양성일 때 써요."
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "v"
+      ]
+    },
+    "v": {
+      "type": "bridge"
+    },
+    "h": {
+      "type": "sign",
+      "texts": [
+        "에"
+      ]
+    },
+    "k": {
+      "type": "sign",
+      "texts": [
+        "에: 앞말의 모음이 음성일 때 써요."
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "w"
+      ]
+    },
+    "w": {
+      "type": "bridge"
+    }
+  },
+  "hint": "앞말의 모음을 보고 알맞은 모양을 골라요."
+}

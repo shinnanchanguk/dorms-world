@@ -1,0 +1,56 @@
+{
+  "legend": {
+    "s": {
+      "type": "sign",
+      "texts": [
+        "부르는 말: 님금(임금이시여)",
+        "님금은 높이는 대상이에요."
+      ]
+    },
+    "e": {
+      "type": "sign",
+      "texts": [
+        "아, 야"
+      ]
+    },
+    "i": {
+      "type": "sign",
+      "texts": [
+        "아, 야: 높이는 대상을 부를 때가 아니에요."
+      ]
+    },
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "u"
+      ]
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "h": {
+      "type": "sign",
+      "texts": [
+        "하"
+      ]
+    },
+    "k": {
+      "type": "sign",
+      "texts": [
+        "하: 높이는 대상을 부를 때 써요."
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "w"
+      ]
+    },
+    "w": {
+      "type": "bridge"
+    }
+  },
+  "hint": "누구를 부르는지 보고 알맞은 모양을 골라요."
+}

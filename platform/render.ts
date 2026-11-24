@@ -6,6 +6,7 @@ import { INKS, type Sprite } from './sprite';
 import { itemRect, itemShown } from './things';
 import { ctxFor, thingActionAt, thingActionText } from './thing-sim';
 import { drawGraphBack, drawGraphFront, graphHud, latexText } from './graph/draw';
+import { hasOldHangul, oldHangulRuns } from './text';
 
 const BASE = import.meta.env.BASE_URL;
 const images = new Map<string, HTMLImageElement>();
@@ -288,12 +289,29 @@ function drawSign(c: CanvasRenderingContext2D, x: number, y: number) {
   c.fillStyle = PALETTE.navy; c.fillRect(x + 8, y + 6, 14, 2); c.fillRect(x + 8, y + 10, 9, 2);
 }
 
+const BUBBLE_FONT = '14px Galmuri11, monospace';
+// 옛한글 덩이만 이 글꼴로 그린다(기기에 깔린 한글 글꼴. 맑은 고딕·애플 SD 산돌고딕 Neo·Noto Sans CJK 는 옛한글 자모를 한 음절로 모은다)
+const OLD_HANGUL_FONT = '14px "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Noto Sans KR", sans-serif';
+
 function bubble(c: CanvasRenderingContext2D, text: string, x: number, y: number) {
-  c.font = '14px Galmuri11, monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-  const wd = Math.ceil(c.measureText(text).width) + 16;
+  c.font = BUBBLE_FONT; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  if (!hasOldHangul(text)) {   // 옛한글이 없으면 예전과 똑같이 그린다
+    const wd = Math.ceil(c.measureText(text).width) + 16;
+    c.fillStyle = PALETTE.navy; c.fillRect(Math.round(x - wd / 2) - 2, Math.round(y - 26) - 2, wd + 4, 28);
+    c.fillStyle = PALETTE.paper; c.fillRect(Math.round(x - wd / 2), Math.round(y - 26), wd, 24);
+    c.fillStyle = PALETTE.navy; c.fillText(text, Math.round(x), Math.round(y - 9));
+    return;
+  }
+  // 옛한글이 든 글: 덩이마다 글꼴을 바꿔 재고, 왼쪽부터 이어 그린다
+  const runs = oldHangulRuns(text);
+  const widths = runs.map(r => { c.font = r.old ? OLD_HANGUL_FONT : BUBBLE_FONT; return c.measureText(r.text).width; });
+  const tw = widths.reduce((a, b) => a + b, 0), wd = Math.ceil(tw) + 16;
   c.fillStyle = PALETTE.navy; c.fillRect(Math.round(x - wd / 2) - 2, Math.round(y - 26) - 2, wd + 4, 28);
   c.fillStyle = PALETTE.paper; c.fillRect(Math.round(x - wd / 2), Math.round(y - 26), wd, 24);
-  c.fillStyle = PALETTE.navy; c.fillText(text, Math.round(x), Math.round(y - 9));
+  c.fillStyle = PALETTE.navy; c.textAlign = 'left';
+  let cx = x - tw / 2;
+  runs.forEach((r, i) => { c.font = r.old ? OLD_HANGUL_FONT : BUBBLE_FONT; c.fillText(r.text, Math.round(cx), Math.round(y - 9)); cx += widths[i]; });
+  c.textAlign = 'center';
 }
 
 export function render(c: CanvasRenderingContext2D, w: World, cam: Camera, now: number, me: number | null, names?: readonly string[]) {
