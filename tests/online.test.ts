@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { colorFor } from '../platform/identity';
 import { joinRoom, listPublic, type Down, type RoomLink } from '../platform/net';
-import { CLOSE, IDLE_MS, LIMITS, MAX_SEATS, PublicList, RoomCore, cleanPad, cleanRoomInfo, originAllowed, readJoinQuery, type JoinQuery, type RoomInfo, type Saved } from '../platform/room-rules';
+import { CLOSE, HOST_QUIET_MS, IDLE_MS, LIMITS, MAX_SEATS, PublicList, RoomCore, cleanPad, cleanRoomInfo, originAllowed, readJoinQuery, type JoinQuery, type RoomInfo, type Saved } from '../platform/room-rules';
 import { createWorld, removePlayer, step, type Pad, type World } from '../platform/sim';
 import { RNOTE, RNOTE_LIST } from '../platform/graph/model';
 import { parseStage, type StageJson } from '../platform/stage';
@@ -539,6 +539,35 @@ describe('방의 규칙(room-rules)', () => {
     expect(d.saved).toMatchObject({ seat: 1 });
   });
 
+  it('소식이 끊긴 방장은 자리는 두고 방장만 살아 있는 다음 사람에게 넘긴다(아무 글이 오지 않아도 알람이 치운다)', () => {
+    const pings = new Map<Sock, number>();
+    const core = new RoomCore<Sock>({ send: (s, t) => { s.got.push(t); }, close: (s, c, why) => { s.closed ??= [c, why]; }, save: (s, v) => { s.saved = v; }, pinged: s => pings.get(s) ?? 0 });
+    const T = 1_000_000;
+    const a = sock('잠든 방장'), b = sock('손님'), c = sock('조작기만 쓰는 손님');
+    core.join(a, CODE, J({ mode: 'create' }), T); core.join(b, CODE, J(), T); core.join(c, CODE, J({ view: 'pad' }), T);
+    pings.set(b, T + HOST_QUIET_MS); pings.set(c, T + HOST_QUIET_MS);
+    expect(core.tick(T + HOST_QUIET_MS)).toBe(true);
+    expect(core.hostSeat).toBe(0);                                   // 아직 기다린다
+    expect(core.tick(T + HOST_QUIET_MS + 1000)).toBe(true);
+    expect(core.hostSeat).toBe(1);                                   // 게임 화면을 보는 손님이 이어받는다
+    expect(a.closed).toBeNull();                                     // 자리는 IDLE_MS 까지 둔다
+    expect(JSON.parse(c.got[c.got.length - 1])).toMatchObject({ t: 'who', host: 1 });
+  });
+
+  it('소식이 끊긴 방장이 혼자면 그대로 두고, 손님 글이 올 때도 가끔 치운다', () => {
+    const pings = new Map<Sock, number>();
+    const core = new RoomCore<Sock>({ send: (s, t) => { s.got.push(t); }, close: (s, c, why) => { s.closed ??= [c, why]; }, save: (s, v) => { s.saved = v; }, pinged: s => pings.get(s) ?? 0 });
+    const T = 2_000_000;
+    const a = sock('방장'); core.join(a, CODE, J({ mode: 'create' }), T);
+    core.tick(T + HOST_QUIET_MS * 2);
+    expect(core.hostSeat).toBe(0);                                   // 넘길 사람이 없다
+    const b = sock('손님'); core.join(b, CODE, J(), T + HOST_QUIET_MS * 2);
+    core.message(b.saved!.seat, b.saved!.key, JSON.stringify({ t: 'p', m: 1, j: 0, a: 0, n: 0 }), T + HOST_QUIET_MS * 2 + 6000);
+    expect(core.hostSeat).toBe(1);
+    expect(core.tick(T + HOST_QUIET_MS * 2 + IDLE_MS)).toBe(true);
+    expect(a.closed).toEqual([CLOSE.bad, 'idle']);                   // 1분이 넘으면 자리도 비운다
+  });
+
   it('들어올 수 있는지만 먼저 물어볼 수 있다(방 서버는 못 들어올 연결을 방에 붙이지 않는다)', () => {
     const r = room();
     expect(r.core.check(CODE, J(), 0)).toEqual([CLOSE.none, 'none']);
@@ -659,6 +688,21 @@ describe('연결(net)', () => {
     expect(net.rooms.get(CODE)!.info).toEqual(INFO);
     host.leave();
     expect(log[log.length - 1]).toBe('down left');
+  });
+
+  it('다시 붙기를 기다리는 중에 와이파이가 돌아오면(nudge) 기다리지 않고 바로 붙는다', async () => {
+    const net = wired();
+    const log: string[] = [];
+    const host = joinRoom('http://room.test', CODE, { create: true, socket: net.Fake, id: 'd'.repeat(16) }, { retry: n => log.push(`retry ${n}`) });
+    await tick();
+    (net.rooms.get(CODE) as unknown as { conns: Map<number, { sock: { end(c: number): void } }> }).conns.get(0)!.sock.end(1006);
+    await tick();
+    expect([host.open, log]).toEqual([false, ['retry 1']]);
+    host.nudge();
+    await tick(20);                                                  // 400ms 를 기다리지 않았다
+    expect([host.open, log]).toEqual([true, ['retry 1', 'retry 0']]);
+    host.nudge();                                                    // 붙어 있을 때는 아무 일도 없다
+    host.leave();
   });
 
   it('끝내 못 붙으면 까닭을 알려 준다', async () => {

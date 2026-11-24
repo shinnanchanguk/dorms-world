@@ -64,7 +64,9 @@ export function init(h: Host) {
   takePass();                           // 주소에 붙어 온 출입증은 방 서버 주소가 없어도 주소에서 지운다
   if (!available()) return;
   // 방장이 화면을 내려 두면(다른 앱으로 감) 게임이 멈춘다. 게임 화면을 보고 있는 다음 사람에게 방장을 넘긴다.
-  document.addEventListener('visibilitychange', () => { if (document.hidden && game && link?.isHost) link.yieldHost(); else if (!document.hidden) tryClaim(false); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && game && link?.isHost) link.yieldHost(); else if (!document.hidden) { link?.nudge(); tryClaim(false); } });
+  // 와이파이가 돌아오면 다시 붙기를 기다리지 않고 바로 붙어 본다(잠들었던 휴대폰, 공유기를 옮겨 탄 노트북)
+  window.addEventListener('online', () => link?.nudge());
   // 화면을 떠나면(닫기 · 새로 고침) 연결만 조용히 끊는다. 주소의 방 코드는 그대로 두어 새로 고치면 같은 방으로 돌아온다.
   window.addEventListener('pagehide', () => { const l = link; if (!l) return; link = null; l.leave(); });
   // 뒤로 가기로 되살아난 화면은 연결이 끊긴 채다: 주소를 보고 다시 들어간다

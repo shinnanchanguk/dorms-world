@@ -389,3 +389,55 @@ describe('뛰기 누름이 버려지지 않는다', () => {
     expect(p.vy).toBeLessThan(-300);
   });
 });
+
+describe('상자와 다리가 겹칠 때', () => {
+  const MAP = [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '...........y............',
+    '.........cc.............',
+    '.@.a.....cc..xx.....K.D.',
+    '########################',
+  ].join('\n');
+  const LEG = { a: { type: 'button' as const, need: 1 as const, opens: ['x', 'y'] }, x: { type: 'bridge' as const }, y: { type: 'bridge' as const }, c: { type: 'crate' as const, need: 1 as const } };
+  const two = [{ color: '#111111' }, { color: '#222222' }];
+  const onButton = (w: World) => { const b = w.stage.buttons[0], p = w.players[1]; p.x = b.x; p.y = b.y + b.h - PH; p.vy = 0; };
+  const floor = 11 * T;
+
+  it('단추로 생긴 다리가 상자 자리에 나타나도 상자를 밀어 빼낼 수 있다', () => {
+    const w = createWorld(parseStage(MAP, { legend: LEG }), two);
+    run(w, [stay, stay], 0.3);
+    const c = w.crates[0];
+    c.x = 12 * T; c.y = floor - c.h;                          // 다리 칸(13열)에 걸친 자리
+    const p = w.players[0]; p.x = c.x - p.w; p.y = floor - PH; p.vy = 0;
+    onButton(w);
+    run(w, [stay, stay], 0.2);
+    expect(w.active.has('x')).toBe(true);
+    const before = c.x;
+    for (let i = 0; i < 60; i++) { onButton(w); step(w, [{ m: 1, j: false }, stay], 1 / 60); }
+    expect(c.x).toBeGreaterThan(before + 20);
+  });
+
+  it('상자에 탄 사람은 다리에 막히면 제자리에 남고 다리와 겹치지 않는다', () => {
+    const w = createWorld(parseStage(MAP, { legend: LEG }), [...two, { color: '#333333' }]);
+    run(w, [stay, stay, stay], 0.3);
+    const c = w.crates[0], rider = w.players[2], pusher = w.players[0];
+    rider.x = c.x + c.w - rider.w - 1; rider.y = c.y - PH; rider.vy = 0;
+    pusher.x = c.x - pusher.w; pusher.y = floor - PH; pusher.vy = 0;
+    const cell = w.stage.bridges.find(b => b.ch === 'y')!.cells[0], wall = { x: cell[0] * T, y: cell[1] * T, w: T, h: T };
+    let hit = false;
+    for (let i = 0; i < 90; i++) {
+      onButton(w); step(w, [{ m: 1, j: false }, stay, stay], 1 / 60);
+      hit ||= rider.x < wall.x + wall.w && rider.x + rider.w > wall.x && rider.y < wall.y + wall.h && rider.y + rider.h > wall.y;   // 다리를 뚫고 지나가지도 않는다
+    }
+    expect(w.active.has('y')).toBe(true);
+    expect(w.crates[0].x).toBeGreaterThan(c.x - 1);
+    expect(hit).toBe(false);
+  });
+});

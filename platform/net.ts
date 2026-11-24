@@ -49,6 +49,11 @@ export type RoomEvents = {
 export type JoinOptions = { create?: boolean; view?: View | 'auto'; pub?: boolean; big?: boolean; id?: string; retries?: number; socket?: typeof WebSocket; pass?: string; title?: string; rank?: boolean; agree?: boolean };
 
 const RETRY_MS = [400, 900, 1800, 3500, 5000];
+/**
+ * 이미 자리를 받았던 사람은 더 오래 다시 붙어 본다(5초 간격으로, 모두 합쳐 1분 조금 못 되게).
+ * 휴대폰이 잠깐 잠들거나 와이파이 공유기가 바뀌면 12초로는 모자라다. 방 서버는 자리를 IDLE_MS(1분) 동안 두니 그 안에 돌아오면 같은 자리를 잇는다.
+ */
+const SEATED_TRIES = 15;
 const QUIET_MS = 25_000, PING_MS = 10_000, HB_MS = 5_000, PASS_WAIT_MS = 5_000;
 
 export const wsBase = (base: string) => base.replace(/\/+$/, '').replace(/^http/, 'ws');
@@ -78,6 +83,8 @@ export class RoomLink {
   /** 내가 신청해 두고 기다리는 닉네임. */
   myAsk = '';
   private passTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 다시 붙기를 기다리는 중(타이머가 걸려 있다). */
+  private waiting = false;
 
   constructor(private base: string, readonly code: string, private opts: JoinOptions, private ev: RoomEvents) { this.connect(!!opts.create); }
 
@@ -202,7 +209,8 @@ export class RoomLink {
     // 2.5초마다 본다: 방장은 5초마다 살아 있음을 알리고(공개 방 목록이 이 소식으로 유지된다), 모두 10초마다 연결을 두드려 본다
     this.beat = setInterval(() => {
       n++;
-      if (Date.now() - this.heard > QUIET_MS) { this.ws?.close(); return; }      // 한참 조용하면 죽은 연결로 보고 다시 붙는다
+      // 한참 조용하면 죽은 연결로 보고 다시 붙는다. 죽은 연결의 닫힘 확인은 한참 걸리니 기다리지 않고 바로 끊긴 것으로 친다
+      if (Date.now() - this.heard > QUIET_MS) { const ws = this.ws; this.closed(1006); try { ws?.close(); } catch { /* 이미 닫힘 */ } return; }
       if (this.isHost && n % Math.round(HB_MS / 2500) === 0) this.raw('{"t":"hb"}');
       if (n % Math.round(PING_MS / 2500) === 0) this.raw('ping');
     }, 2500);
@@ -225,14 +233,22 @@ export class RoomLink {
       if (this.wasHost && !this.remake) { this.remake = true; this.connect(true); return; }
       // 손님이었으면 방장이 방을 다시 세울 때까지 몇 번 더 두드려 본다(아래로 이어진다)
     }
-    const max = this.opts.retries ?? RETRY_MS.length;
+    const max = this.opts.retries ?? (this.me >= 0 ? SEATED_TRIES : RETRY_MS.length);
     if (this.me < 0 && code === CLOSE.bad) return this.fail('none');
     if (this.tries >= max) return this.fail(code === CLOSE.none ? 'none' : 'lost');
     const wait = RETRY_MS[Math.min(this.tries, RETRY_MS.length - 1)];
     this.tries++;
     this.remake = false;
     this.ev.retry?.(this.tries);
-    this.later(() => { if (!this.done) this.connect(this.me < 0 && !!this.opts.create); }, wait);
+    this.waiting = true;
+    this.later(() => { if (!this.done && this.waiting) { this.waiting = false; this.connect(this.me < 0 && !!this.opts.create); } }, wait);
+  }
+
+  /** 와이파이가 돌아왔거나 화면이 다시 보인다: 다시 붙기를 기다리는 중이면 기다리지 않고 바로 붙어 본다. */
+  nudge() {
+    if (this.done || !this.waiting) return;
+    this.waiting = false;
+    this.connect(this.me < 0 && !!this.opts.create);
   }
 
   /** 잠깐 뒤에 할 일. 끝난 타이머는 목록에서 빼서, 오래 끊겼다 붙었다 해도 목록이 쌓이지 않게 한다. */
@@ -247,7 +263,7 @@ export class RoomLink {
     this.ev.down?.(why);
   }
   private stop() {
-    this.done = true; this.open = false;
+    this.done = true; this.open = false; this.waiting = false;
     for (const t of this.timers) clearTimeout(t);
     this.timers = [];
     if (this.passTimer) { clearTimeout(this.passTimer); this.passTimer = null; }

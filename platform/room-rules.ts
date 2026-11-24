@@ -32,6 +32,13 @@ export const PUBLIC_TTL = 30_000;
 export const REPORT_GAP = 1000, REPORT_KEEP = 10_000;
 /** 이만큼 아무 소식(글도, 연결 두드리기도)이 없는 연결은 죽은 것으로 보고 자리를 비운다. 화면은 10초마다 두드린다. */
 export const IDLE_MS = 60_000;
+/**
+ * 방장은 5초마다 살아 있음을 알리고 10초마다 연결을 두드린다. 이만큼 아무 소식이 없으면 방장 자리만 다음 사람에게 넘긴다(자리는 IDLE_MS 까지 둔다).
+ * 방장 휴대폰이 잠들거나 와이파이에서 떨어졌는데 닫힘 신호가 오지 않으면, 나머지가 스테이지 고르는 화면이나 멈춘 판에서 몇 분씩 기다리게 되던 것을 막는다.
+ */
+export const HOST_QUIET_MS = 15_000;
+/** 손님 글이 올 때 죽은 연결을 치워 보는 간격. 방 서버의 알람도 이 간격으로 tick() 을 부른다. */
+export const SWEEP_GAP = 5_000;
 
 export const ORIGINS = ['https://dorms-world.vercel.app', 'https://dorms.school'];
 const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
@@ -240,6 +247,7 @@ export class RoomCore<S> {
   private told = '';          // 공개 방 목록에 마지막으로 알린 값
   private toldAt = 0;
   private clock = 0;          // 마지막으로 본 때(밀리초)
+  private sweptAt = 0;        // 마지막으로 죽은 연결을 치운 때
   private cls: Klass | null = null;      // 교사 방이면 그 정보(보통 방은 null)
   private runAt = 0;                     // 지금 판이 열린 때(밀리초). 모르면 0
   private runOk = false;                 // 지금 판을 교사의 기기가 열었는가(그런 판만 순위에 오른다)
@@ -317,10 +325,30 @@ export class RoomCore<S> {
   }
   /** 한참 소식이 없는 연결을 끊어 자리를 비운다(죽은 연결이 자리와 도름이를 붙잡고 있지 않게). */
   private sweep() {
+    this.sweptAt = this.clock;
+    const lastOf = (c: Conn<S>) => Math.max(c.seen, this.out.pinged?.(c.sock) ?? 0);
     for (const c of [...this.conns.values()]) {
-      const last = Math.max(c.seen, this.out.pinged?.(c.sock) ?? 0);
+      const last = lastOf(c);
       if (last > 0 && this.clock - last > IDLE_MS) this.kick(c, CLOSE.bad, 'idle');
     }
+    // 소식이 끊긴 방장: 자리는 두고 방장만 살아 있는 다음 사람에게 넘긴다. 넘길 사람이 없으면 그대로 둔다
+    const h = [...this.conns.values()].find(c => c.host), hl = h ? lastOf(h) : 0;
+    if (h && hl > 0 && this.clock - hl > HOST_QUIET_MS) {
+      const alive = (c: Conn<S>) => { const l = lastOf(c); return l > 0 && this.clock - l <= HOST_QUIET_MS; };
+      const next = [...this.conns.values()].filter(c => c !== h && alive(c)).sort((a, b) => a.rank - b.rank);
+      const pick = next.find(c => c.view === 'play') ?? next[0];
+      if (pick) {
+        h.host = false; pick.host = true; pick.view = 'play';
+        if (!pick.teacher) this.runOk = false;
+        this.save(h); this.save(pick); this.who();
+      }
+    }
+  }
+  /** 방 서버의 알람이 부른다: 아무 글이 오지 않아도 죽은 연결과 소식이 끊긴 방장을 치운다. 방이 비면 false(알람을 더 걸지 않는다). */
+  tick(now: number): boolean {
+    this.clock = Math.max(this.clock, now);
+    if (this.conns.size) this.sweep();
+    return this.conns.size > 0;
   }
   /** 방장이 없으면 새로 뽑는다. 뽑았으면 true. */
   private elect(skip?: Conn<S>): boolean {
@@ -432,6 +460,7 @@ export class RoomCore<S> {
     const c = this.conns.get(seat);
     if (!c || c.key !== key) return;
     this.clock = Math.max(this.clock, now); c.seen = now;
+    if (this.clock - this.sweptAt >= SWEEP_GAP) { this.sweep(); if (this.conns.get(seat) !== c) return; }   // 손님 글이 올 때도 가끔 치운다(보낸 사람이 방금 방장을 넘겨받았을 수 있다)
     // 빈도: 초당 40통까지(잠깐 몰리는 것은 80통까지 봐준다). 넘으면 끊는다.
     c.tokens = Math.min(LIMITS.burst, c.tokens + (c.at ? (now - c.at) * LIMITS.perSec / 1000 : 0)); c.at = now;
     if (--c.tokens < 0) return this.kick(c, CLOSE.tooFast, 'fast');
@@ -563,11 +592,11 @@ export class PublicList {
 
 // ---------- 방 마구 만들기 · 방 코드 훑기 막기 ----------
 /**
- * 같은 인터넷 주소에서: 방 만들기는 1분에 10번, 한 시간에 60번까지. 서로 다른 틀린 방 코드를 1분에 30개 넘게 넣으면 그 주소의 들어오기를 1분 쉰다.
+ * 같은 인터넷 주소에서: 방 만들기는 1분에 30번, 한 시간에 300번까지(학교는 모든 기기가 한 주소로 나가 컴퓨터실 여러 모둠이 한꺼번에 만든다). 서로 다른 틀린 방 코드를 1분에 30개 넘게 넣으면 그 주소의 들어오기를 1분 쉰다.
  * 맞는 코드로 들어오는 것은 세지 않는다(한 반 30명이 같은 주소에서 한꺼번에 들어와도 걸리지 않는다).
  * 틀린 코드는 '서로 다른 코드'로 센다: 방 서버가 새로 뜬 직후 한 반이 같은 코드를 여러 번 두드리는 것은 훑기가 아니다.
  */
-export const GATE = { createPerMin: 10, createPerHour: 60, wrongCodes: 30, restMs: 60_000, keys: 5000 } as const;
+export const GATE = { createPerMin: 30, createPerHour: 300, wrongCodes: 30, restMs: 60_000, keys: 5000 } as const;
 export class Gate {
   private seen = new Map<string, { made: number[]; wrong: Map<string, number>; rest: number; at: number }>();
   private of(key: string, now: number) {

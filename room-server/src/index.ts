@@ -13,7 +13,7 @@
  */
 import { DurableObject } from 'cloudflare:workers';
 import { validRoomCode } from '../../platform/room-code';
-import { CLOSE, Gate, LIMITS, PublicList, RoomCore, dormsUrl, ipKey, originAllowed, readJoinQuery, readRankReply, verifyPass, type PublicRoom, type RankReport, type Saved } from '../../platform/room-rules';
+import { CLOSE, Gate, LIMITS, PublicList, SWEEP_GAP, RoomCore, dormsUrl, ipKey, originAllowed, readJoinQuery, readRankReply, verifyPass, type PublicRoom, type RankReport, type Saved } from '../../platform/room-rules';
 
 export interface Env {
   ROOM: DurableObjectNamespace<Room>;
@@ -120,8 +120,16 @@ export class Room extends DurableObject<Env> {
     }
     this.ctx.acceptWebSocket(server);
     this.core.join(server, code, q);
+    await this.keepAlarm();
     return new Response(null, { status: 101, webSocket: client });
   }
+
+  /**
+   * 사람이 있는 동안 몇 초마다 깨어 죽은 연결과 소식이 끊긴 방장을 치운다. 닫힘 신호 없이 사라진 기기(잠든 휴대폰, 끊긴 와이파이)는
+   * 아무 글도 오지 않으면 방이 알아챌 길이 없어서다. 방이 비면 알람을 더 걸지 않는다.
+   */
+  async alarm() { if (this.core.tick(Date.now())) await this.ctx.storage.setAlarm(Date.now() + SWEEP_GAP); }
+  private async keepAlarm() { if ((await this.ctx.storage.getAlarm()) == null) await this.ctx.storage.setAlarm(Date.now() + SWEEP_GAP); }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     // 글이 아닌 것(바이너리)도 빈도와 크기 검사는 똑같이 거친다. 같은 크기의 빈 글로 바꿔 넘기면 세어지고, 크면 끊기고, 읽히지는 않는다

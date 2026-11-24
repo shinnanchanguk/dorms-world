@@ -340,9 +340,13 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
       // 상자 앞에 선 사람은 같이 밀려 간다. 그 사람이 벽에 막혀 더 못 가면 상자도 멈춘다(사람이 상자에 묻히지 않게).
       const ahead = w.players.filter(p => !p.inDoor && overlap(p, nb) && !overlap(p, b));
       const squeezed = ahead.some(p => { const m = { x: p.x + dx, y: p.y, w: p.w, h: p.h }; const q = otherAt(w, p, m); return hitsTiles(w, m) || hitsBridge(w, m) || crateAt(w, m, ci) >= 0 || (!!q && !ahead.includes(q)); });
-      if (!hitsTiles(w, nb) && !hitsBridge(w, nb) && crateAt(w, nb, ci) < 0 && !thingSolidAt(w, nb, b) && !squeezed) {
-        const riders = w.players.filter(p => !p.inDoor && p.on && p.x + p.w > b.x && p.x < b.x + b.w && Math.abs(p.y + p.h - b.y) < 2);
-        for (const p of [...ahead, ...riders]) { const m = { x: p.x + dx, y: p.y, w: p.w, h: p.h }; if (!hitsTiles(w, m)) p.x += dx; }
+      // 다리가 상자 자리에 갑자기 생겼으면(단추로 켜짐) 사람처럼 빠져나올 수 있게 한다. 아니면 다리가 꺼질 때까지 상자가 박혀 있었다
+      const stuck = hitsBridge(w, b);
+      if (!hitsTiles(w, nb) && (stuck || !hitsBridge(w, nb)) && crateAt(w, nb, ci) < 0 && !thingSolidAt(w, nb, b) && !squeezed) {
+        for (const p of ahead) { const m = { x: p.x + dx, y: p.y, w: p.w, h: p.h }; if (!hitsTiles(w, m)) p.x += dx; }
+        // 상자에 탄 사람은 같이 간다. 다리나 다른 친구에 막히면 그 사람만 제자리에 남는다(몸이 겹치지 않게). 앞사람부터 옮겨야 붙어 선 줄이 끊기지 않는다
+        const riders = w.players.filter(p => !p.inDoor && p.on && p.x + p.w > b.x && p.x < b.x + b.w && Math.abs(p.y + p.h - b.y) < 2).sort((p, q) => (q.x - p.x) * dir);
+        for (const p of riders) { const m = { x: p.x + dx, y: p.y, w: p.w, h: p.h }; if (!hitsTiles(w, m) && !hitsBridge(w, m) && !otherAt(w, p, m)) p.x += dx; }
         b.x = nb.x;
       }
     }
