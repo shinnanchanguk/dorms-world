@@ -6,7 +6,7 @@
 import { applyGraphWire, graphToWire, readGWire, type GWire } from './graph/wire';
 import { colorFor } from './identity';
 import { MAX_SEATS } from './room-rules';
-import { NO_PAD, setPlayerCount, type Pad, type World } from './sim';
+import { NO_PAD, setPlayerCount, setSmall, type Pad, type World } from './sim';
 import { T } from './stage';
 import { VARS, num as clampNum } from './things';
 
@@ -30,13 +30,13 @@ export type Wire = {
 };
 
 const r1 = (v: number) => Math.round(v * 10) / 10, r2 = (v: number) => Math.round(v * 100) / 100;
-const ON = 1, IN_DOOR = 2, LEFT = 4, RIGHT = 8, TURN = 16, LOCK = 32, A_HELD = 64, J_HELD = 128;
+const ON = 1, IN_DOOR = 2, LEFT = 4, RIGHT = 8, TURN = 16, LOCK = 32, A_HELD = 64, J_HELD = 128, SMALL = 256;
 
 /** 방장: 지금 세계를 요약으로. seats 는 도름이 차례대로의 자리 번호(방 정보의 order). */
 export function toWire(w: World, seats: readonly number[], run: number, n: number): Wire {
   const p: number[] = [];
   w.players.forEach((q, i) => {
-    const bits = (q.on ? ON : 0) | (q.inDoor ? IN_DOOR : 0) | (q.side === 'left' ? LEFT : q.side === 'right' ? RIGHT : 0) | (q.turnT > 0 ? TURN : 0) | (q.doorLock ? LOCK : 0) | (q.aHeld ? A_HELD : 0) | (q.jumpHeld ? J_HELD : 0);
+    const bits = (q.on ? ON : 0) | (q.inDoor ? IN_DOOR : 0) | (q.side === 'left' ? LEFT : q.side === 'right' ? RIGHT : 0) | (q.turnT > 0 ? TURN : 0) | (q.doorLock ? LOCK : 0) | (q.aHeld ? A_HELD : 0) | (q.jumpHeld ? J_HELD : 0) | (q.small ? SMALL : 0);
     p.push(seats[i] ?? i, r1(q.x), r1(q.y), Math.round(q.vx), Math.round(q.vy), bits, r1(q.walk % 4), r2(Math.max(0, q.stun)), q.onCurve ? 1 : 0);
   });
   return {
@@ -62,7 +62,7 @@ export function readWire(x: unknown): Wire | null {
   if (!whole(o.r, 0, 1e9) || !whole(o.n, 0, 1e12) || !num(o.t) || o.t < 0 || !whole(o.f, 0, 3)) return null;
   if (!nums(o.k, 4) || o.k.length !== 4 || typeof o.a !== 'string' || o.a.length > 64) return null;
   if (!nums(o.b, 200) || !nums(o.c, 200 * C) || o.c.length % C || !nums(o.p, MAX_SEATS * P) || o.p.length % P) return null;
-  for (let i = 0; i < o.p.length; i += P) if (!whole(o.p[i], 0, MAX_SEATS - 1) || !whole(o.p[i + 5], 0, 255) || !whole(o.p[i + 8], 0, 1)) return null;
+  for (let i = 0; i < o.p.length; i += P) if (!whole(o.p[i], 0, MAX_SEATS - 1) || !whole(o.p[i + 5], 0, 511) || !whole(o.p[i + 8], 0, 1)) return null;
   const g = readGWire(o.g);
   if (!g) return null;
   if (o.h != null && !nums(o.h, 12 + 80 * H)) return null;
@@ -92,6 +92,7 @@ export function applyWire(w: World, wire: Wire): boolean {
   w.crates.forEach((c, i) => { c.x = inX(wire.c[i * C]); c.y = inY(wire.c[i * C + 1]); c.vy = fast(wire.c[i * C + 2]); c.pushers = Math.max(0, Math.min(MAX_SEATS, wire.c[i * C + 3] | 0)); });
   w.players.forEach((q, i) => {
     const o = i * P, bits = wire.p[o + 5];
+    setSmall(q, !!(bits & SMALL));
     q.x = inX(wire.p[o + 1]); q.y = inY(wire.p[o + 2]); q.vx = fast(wire.p[o + 3]); q.vy = fast(wire.p[o + 4]);
     q.on = !!(bits & ON); q.inDoor = !!(bits & IN_DOOR);
     q.side = bits & LEFT ? 'left' : bits & RIGHT ? 'right' : null;

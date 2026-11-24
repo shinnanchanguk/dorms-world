@@ -5,6 +5,7 @@
 import { T, resolveNeed, type Rect, type Stage } from './stage';
 import { createThingWorld, type ThingWorld } from './things';
 import { thingActive, thingAvoid, thingSolidAt, thingTick, thingsBefore, thingsRelease, thingsRemove } from './thing-sim';
+import { SMALL_H, SMALL_W, inShrink, sieveBlocks, sievePull } from './size';
 import { createGraph, graphActionAt, graphTick, holdingPiece, riderSpot, surfaceBelow, type GAction, type GraphWorld, type Host } from './graph/model';
 
 export const G = 1900, SPEED = 175, JUMP = Math.sqrt(2 * G * 108), CRATE_SPEED = 55;
@@ -42,6 +43,7 @@ export type Player = Rect & {
   doorLock: boolean;       // 문을 막 드나든 뒤, 확인에서 손을 뗄 때까지 다시 드나들지 않는다
   want: -1 | 0 | 1;        // 이번 걸음에 가려던 방향
   inDoor: boolean;
+  small: boolean;          // 작아지는 곳(shrink)에 닿아 작아졌다. 처음 자리로 돌아가면 원래 크기로
 };
 
 export type Crate = Rect & { vy: number; need: number; pushers: number };
@@ -136,7 +138,7 @@ function spawnPlayer(stage: Stage, i: number, color: string): Player {
   const at = spawnAt(stage, i);
   return {
     i, color, x: at.x, y: at.y, w: PW, h: PH,
-    vx: 0, vy: 0, on: false, side: null, turnT: 0, walk: 0, pressing: 0, pressCrate: -1, jumpHeld: false, jn: null, jumpBuf: 0, coyote: 0, aHeld: false, aNew: false, stun: 0, onCurve: false, jumpNew: false, doorLock: false, want: 0, inDoor: false,
+    vx: 0, vy: 0, on: false, side: null, turnT: 0, walk: 0, pressing: 0, pressCrate: -1, jumpHeld: false, jn: null, jumpBuf: 0, coyote: 0, aHeld: false, aNew: false, stun: 0, onCurve: false, jumpNew: false, doorLock: false, want: 0, inDoor: false, small: false,
   };
 }
 
@@ -230,11 +232,12 @@ export function crateAt(w: World, r: Rect, skip = -1) {
 
 /** 사람이 막히는가. 다리가 갑자기 생긴 자리에 이미 들어가 있던 사람은 빠져나올 수 있게 한다. */
 function blocked(w: World, r: Rect, insideBridge: boolean, self?: Rect, fromBottom?: number) {
-  return hitsTiles(w, r) || crateAt(w, r) >= 0 || (!insideBridge && hitsBridge(w, r)) || thingSolidAt(w, r, self, fromBottom);
+  return hitsTiles(w, r) || sieveBlocks(w.stage.size, r, !!(self as Player | undefined)?.small) || crateAt(w, r) >= 0 || (!insideBridge && hitsBridge(w, r)) || thingSolidAt(w, r, self, fromBottom);
 }
 
 /** 처음 자리로 되돌린다(떨어짐·깔림·닿으면 처음 자리로 가는 물건). 든 열쇠는 처음 자리로, 든 것은 내려놓는다. */
 export function respawn(w: World, p: Player) {
+  setSmall(p, false);
   const at = spawnAt(w.stage, p.i);
   p.x = at.x; p.y = at.y; p.vx = 0; p.vy = 0; p.jumpBuf = 0;   // 누른 채 떨어졌어도 되살아난 자리에서 저절로 뛰지 않는다
   if (w.key.holder === p.i) dropKey(w);
@@ -327,6 +330,7 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
     if (p.y > stage.rows * T + 60) respawn(w, p);   // 떨어지면 시작 자리로
   }
 
+  sizeTick(w);   // 크기 바꾸기: 작아지는 곳에 닿으면 작아지고, 작은 도름이는 틈으로 빨려 들어간다
   ropeTick(w);   // 줄 묶기: 줄보다 멀어진 친구끼리 당긴다
 
   // 상자: 한쪽에서 미는 사람이 맞은편보다 필요 인원만큼 많아야 움직인다(같은 수로 맞서면 멈춘다)
@@ -335,14 +339,14 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
     const dir: -1 | 0 | 1 = r.length > l.length ? 1 : l.length > r.length ? -1 : 0, count = Math.abs(r.length - l.length);
     for (const p of dir > 0 ? r : dir < 0 ? l : []) { p.pressing = dir as -1 | 1; p.pressCrate = ci; }
     b.pushers = count;
-    const solidUnder = (rect: Rect) => hitsTiles(w, rect) || hitsBridge(w, rect) || crateAt(w, rect, ci) >= 0 || thingSolidAt(w, rect, undefined, b.y + b.h);
+    const solidUnder = (rect: Rect) => hitsTiles(w, rect) || sieveBlocks(w.stage.size, rect, false) || hitsBridge(w, rect) || crateAt(w, rect, ci) >= 0 || thingSolidAt(w, rect, undefined, b.y + b.h);
     if (solidUnder({ x: b.x + 1, y: b.y + b.h, w: b.w - 2, h: 1 }) && dir && count >= b.need) {
       const dx = dir * CRATE_SPEED * dt;
       const nb = { x: b.x + dx, y: b.y, w: b.w, h: b.h };
       // 상자 앞에 선 사람은 같이 밀려 간다. 그 사람이 벽에 막혀 더 못 가면 상자도 멈춘다(사람이 상자에 묻히지 않게).
       const ahead = w.players.filter(p => !p.inDoor && overlap(p, nb) && !overlap(p, b));
       const squeezed = ahead.some(p => { const m = { x: p.x + dx, y: p.y, w: p.w, h: p.h }; const q = otherAt(w, p, m); return hitsTiles(w, m) || hitsBridge(w, m) || crateAt(w, m, ci) >= 0 || (!!q && !ahead.includes(q)); });
-      if (!hitsTiles(w, nb) && !hitsBridge(w, nb) && crateAt(w, nb, ci) < 0 && !thingSolidAt(w, nb, b) && !squeezed) {
+      if (!hitsTiles(w, nb) && !sieveBlocks(w.stage.size, nb, false) && !hitsBridge(w, nb) && crateAt(w, nb, ci) < 0 && !thingSolidAt(w, nb, b) && !squeezed) {
         const riders = w.players.filter(p => !p.inDoor && p.on && p.x + p.w > b.x && p.x < b.x + b.w && Math.abs(p.y + p.h - b.y) < 2);
         for (const p of [...ahead, ...riders]) { const m = { x: p.x + dx, y: p.y, w: p.w, h: p.h }; if (!hitsTiles(w, m)) p.x += dx; }
         b.x = nb.x;
@@ -423,6 +427,33 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
       else if (p.inDoor && pressed) { p.inDoor = false; p.doorLock = true; p.x = door.x + door.w / 2 - p.w / 2; p.y = door.y + door.h - p.h; p.vx = 0; p.vy = 0; }
     }
     if (w.players.length > 0 && w.players.every(p => p.inDoor)) w.won = true;
+  }
+}
+
+// ---------- 크기 바꾸기 (legend 의 shrink · sieve, platform/size.ts) ----------
+/** 크기를 바꾼다. 발과 몸 가운데는 그 자리에 둔다. */
+export function setSmall(p: Player, small: boolean) {
+  if (p.small === small) return;
+  const cx = p.x + p.w / 2, feet = p.y + p.h;
+  p.small = small; p.w = small ? SMALL_W : PW; p.h = small ? SMALL_H : PH;
+  p.x = cx - p.w / 2; p.y = feet - p.h;
+}
+
+const SUCK = 240;   // 틈으로 빨려 드는 빠르기(px/초)
+function sizeTick(w: World) {
+  const size = w.stage.size;
+  if (!size.shrinks.length && !size.sieves.length) return;
+  for (const p of w.players) {
+    if (p.inDoor) continue;
+    if (!p.small && inShrink(size, p, ch => w.active.has(ch))) setSmall(p, true);
+    if (!p.small) continue;
+    const pull = sievePull(size, p);
+    if (pull === 'down') { p.vy = Math.max(p.vy, SUCK); p.on = false; }
+    else if (pull === 'up') { p.vy = Math.min(p.vy, -SUCK); p.on = false; }
+    else if (pull) {
+      const d = (pull === 'right' ? 1 : -1) * SUCK / 60, inside = hitsBridge(w, p), r = { x: p.x + d, y: p.y, w: p.w, h: p.h };
+      if (!blocked(w, r, inside, p) && r.x >= 0 && r.x + p.w <= w.stage.cols * T) p.x = r.x;
+    }
   }
 }
 
@@ -554,6 +585,6 @@ export function snapshot(w: World): Snapshot {
     t: +w.t.toFixed(2), open: w.doorOpen, won: w.won, act: [...w.active], pr: w.pressed.slice(),
     key: [Math.round(w.key.x), Math.round(w.key.y), w.key.holder ?? -1, w.key.used ? 1 : 0],
     cr: w.crates.map(c => [Math.round(c.x * 10) / 10, Math.round(c.y), c.pushers]),
-    pl: w.players.map(p => [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10, Math.round(p.vx), (p.on ? 1 : 0) | (p.inDoor ? 2 : 0) | (p.side === 'left' ? 4 : p.side === 'right' ? 8 : 0) | (p.turnT > 0 ? 16 : 0), Math.round(p.walk * 10) / 10]),
+    pl: w.players.map(p => [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10, Math.round(p.vx), (p.on ? 1 : 0) | (p.inDoor ? 2 : 0) | (p.side === 'left' ? 4 : p.side === 'right' ? 8 : 0) | (p.turnT > 0 ? 16 : 0) | (p.small ? 32 : 0), Math.round(p.walk * 10) / 10]),
   };
 }

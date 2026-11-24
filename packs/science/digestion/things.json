@@ -33,5 +33,15 @@
     "sprite": "nutrient",
     "size": 3,
     "body": "carry"
+  },
+  "wave": {
+    "name": "소장 벽",
+    "frames": [
+      "surge-0",
+      "surge-1",
+      "surge-2"
+    ],
+    "size": 3,
+    "behavior": "surge"
   }
 }

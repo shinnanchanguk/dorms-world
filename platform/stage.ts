@@ -5,6 +5,7 @@
 import { emptyGraphStage, type GraphStage } from './graph/model';
 import { GRAPH_KEYS, finishGraph, parseGraphLegend, type GraphLegend } from './graph/legend';
 import type { Sprite } from './sprite';
+import { NO_SIZE, SIZE_KEYS, parseSizeLegend, type SizeLegend, type SizeStage } from './size';
 import { NO_THINGS, THING_KEYS, finishThings, parseThingLegend, thingOpens, type ThingKind, type ThingStage } from './things';
 
 export const T = 30;
@@ -20,7 +21,8 @@ export type LegendEntry =
   | { type: 'deco'; sprite?: string }
   | { type: 'thing'; thing?: string }
   | { type: 'goal'; accepts?: string[]; need?: number | 'all'; opens?: string[]; label?: string; sprite?: string }
-  | GraphLegend;
+  | GraphLegend
+  | SizeLegend;
 
 export type StageJson = { legend?: Record<string, LegendEntry>; hint?: string; rope?: { length?: number; link?: 'pairs' | 'chain' } };
 /** 줄 묶기: 도름이끼리 줄로 묶는다. length 는 줄 길이(칸), link 는 둘씩(pairs) 또는 모두 한 줄로(chain). */
@@ -48,6 +50,7 @@ export type Stage = {
   things: ThingStage;   // things.json 으로 만든 새 물건과 놓는 곳
   hint: string;
   rope: Rope | null;    // 줄 묶기(없으면 null)
+  size: SizeStage;      // 크기 바꾸기: 작아지는 곳(shrink)과 작은 것만 지나는 틈(sieve)
 };
 
 export function resolveNeed(need: Need, players: number): number {
@@ -110,7 +113,7 @@ export function parseStage(mapText: string, json: StageJson = {}, sprites: Recor
   if (json.hint != null && (typeof json.hint !== 'string' || json.hint.length > 60)) throw new Error('hint 는 60자까지의 한 줄이에요.');
   const legend = json.legend ?? {};
   if (legend === null || typeof legend !== 'object' || Array.isArray(legend)) throw new Error('legend 는 { "a": { "type": ... } } 모양이어야 해요.');
-  const KEYS: Record<string, string[]> = { button: ['type', 'need', 'opens'], bridge: ['type', 'mode'], crate: ['type', 'need'], sign: ['type', 'texts'], deco: ['type', 'sprite'], ...GRAPH_KEYS, ...THING_KEYS };
+  const KEYS: Record<string, string[]> = { button: ['type', 'need', 'opens'], bridge: ['type', 'mode'], crate: ['type', 'need'], sign: ['type', 'texts'], deco: ['type', 'sprite'], ...GRAPH_KEYS, ...THING_KEYS, ...SIZE_KEYS };
   const TYPES = Object.keys(KEYS).join(', ');
   for (const [ch, def] of Object.entries(legend) as [string, unknown][]) {
     if (def === null || typeof def !== 'object' || Array.isArray(def)) throw new Error(`legend 의 "${ch}" 는 { "type": "button" } 같은 모양이어야 해요.`);
@@ -149,6 +152,7 @@ export function parseStage(mapText: string, json: StageJson = {}, sprites: Recor
   const decos: Deco[] = [];
   const graph = emptyGraphStage();
   const things: ThingStage = { kinds: [], items: [], goals: [] };
+  const size: SizeStage = { shrinks: [], sieves: [] };
   for (const [ch, def] of Object.entries(legend)) {
     const cells = found.get(ch);
     if (!cells) throw new Error(`legend 의 "${ch}" 가 지도에 없어요.`);
@@ -192,6 +196,8 @@ export function parseStage(mapText: string, json: StageJson = {}, sprites: Recor
       if (decos.length > 60) throw new Error('꾸밈 그림은 한 스테이지에 60개까지예요.');
     } else if (def.type === 'thing' || def.type === 'goal') {
       parseThingLegend(ch, def as Record<string, unknown>, cells, at, kinds, sprites, groups, things, crates);
+    } else if (def.type === 'shrink' || def.type === 'sieve') {
+      parseSizeLegend(size, ch, def as Record<string, unknown>, cells, c => legend[c]?.type === 'bridge');
     } else if (Object.hasOwn(GRAPH_KEYS, def.type)) {
       parseGraphLegend(graph, ch, def as GraphLegend, cells, at, groups, legend);
     } else {
@@ -205,5 +211,5 @@ export function parseStage(mapText: string, json: StageJson = {}, sprites: Recor
   for (const ch of thingOpens(things)) graphOpens.add(ch);
   for (const b of bridges) if (!buttons.some(x => x.opens.includes(b.ch)) && !graphOpens.has(b.ch)) throw new Error(`다리 "${b.ch}" 를 여는 단추나 장치가 없어요.`);
   const hint = json.hint ?? '';
-  return { cols, rows, solid, spawn, key, door, buttons, bridges, crates, signs, decos, graph, things: things.kinds.length ? things : NO_THINGS, hint, rope };
+  return { cols, rows, solid, spawn, key, door, buttons, bridges, crates, signs, decos, graph, things: things.kinds.length ? things : NO_THINGS, hint, rope, size: size.shrinks.length || size.sieves.length ? size : NO_SIZE };
 }

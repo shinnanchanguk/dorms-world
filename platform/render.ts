@@ -56,7 +56,37 @@ function drawDoreumi(c: CanvasRenderingContext2D, p: Player, now: number) {
   else name = moving ? `${p.side}_${frame}` : `${p.side}_1`;
   const [sx, sy, sw, sh] = ATLAS[name] ?? ATLAS.front_1;   // 모르는 그림 이름이어도 그리기가 멈추지 않게
   const bob = moving ? (Math.floor(now / MOTION.walkBobMs) % 2 ? -1 : 0) : (Math.sin(now / MOTION.idleBreathMs * Math.PI * 2 + p.i) > 0.3 ? -1 : 0);
+  if (p.small) {   // 작아진 도름이: 같은 그림을 반으로 줄여 그린다(크기 바꾸기 장치)
+    const dw = Math.round(sw / 2), dh = Math.round(sh / 2);
+    c.drawImage(tinted(p.color), sx, sy, sw, sh, Math.round(p.x + p.w / 2 - dw / 2), Math.round(p.y + p.h - dh + 1 + (bob ? -1 : 0)), dw, dh);
+    return;
+  }
   c.drawImage(tinted(p.color), sx, sy, sw, sh, Math.round(p.x + p.w / 2 - sw / 2), Math.round(p.y + p.h - sh + 1 + bob), sw, sh);
+}
+
+/**
+ * 크기 바꾸기 장치. 작아지는 곳은 민트 바탕에 작은 점들(켜지기 전에는 옅게), 틈은 살구색 벽에 남색 좁은 틈.
+ * 색은 PALETTE 물감만 쓴다.
+ */
+function drawSize(c: CanvasRenderingContext2D, w: World, now: number) {
+  const size = w.stage.size;
+  for (const z of size.shrinks) {
+    const on = !z.when || w.active.has(z.when);
+    c.globalAlpha = on ? 0.75 : 0.3;
+    for (const [cc, r] of z.cells) {
+      c.fillStyle = PALETTE.grass; c.fillRect(cc * T, r * T, T, T);
+      c.fillStyle = PALETTE.outline;
+      const k = on ? Math.floor(now / 250) % 3 : 0;
+      for (let d = 0; d < 3; d++) c.fillRect(cc * T + 5 + d * 9, r * T + 6 + ((d + k) % 3) * 8, 3, 3);
+    }
+    c.globalAlpha = 1;
+  }
+  for (const s of size.sieves) for (const [cc, r] of s.cells) {
+    c.fillStyle = PALETTE.crate; c.fillRect(cc * T, r * T, T, T);
+    c.fillStyle = PALETTE.navy;
+    for (let x = 4; x < T; x += 8) c.fillRect(cc * T + x, r * T + 2, 3, T - 4);
+    c.fillStyle = PALETTE.outline; c.fillRect(cc * T, r * T, T, 2); c.fillRect(cc * T, r * T + T - 2, T, 2);
+  }
 }
 
 /** lift: 판을 위로 올려 그린 만큼(캔버스 점, 배율과 무관). 휴대폰 가로에서 화면 단추 밑에 바닥 장치가 깔리지 않게 그 아래 흙을 더 보여 준다. */
@@ -143,6 +173,7 @@ function drawStage(c: CanvasRenderingContext2D, w: World, now: number, me: numbe
     c.drawImage(spr(top ? 'tile' : 'soil'), cc * T, r * T, T, T);
   }
   for (const d of s.decos) drawSprite(c, d.sprite, d.x, d.y, 2);
+  drawSize(c, w, now);
   drawThings(c, w, now);
   drawGraphBack(c, s.graph, w.g, s.cols, s.rows, now);
   s.buttons.forEach((b, i) => {
