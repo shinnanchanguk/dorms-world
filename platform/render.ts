@@ -116,7 +116,9 @@ function drawRopes(c: CanvasRenderingContext2D, w: World) {
     const ax = a.x + a.w / 2, ay = a.y + a.h * 0.62, bx = b.x + b.w / 2, by = b.y + b.h * 0.62;
     const d = Math.hypot(bx - ax, by - ay);
     if (d > max * 3) continue;
-    const sag = d < max ? Math.sqrt(max * max - d * d) / 2 : 0;
+    // 남는 줄은 처진다. 다만 두 도름이 발보다 아래로는 처지지 않는다(땅 속으로 그려지지 않게)
+    const floor = Math.max(a.y + a.h, b.y + b.h) - 2 - (ay + by) / 2;
+    const sag = d < max ? Math.max(0, Math.min(Math.sqrt(max * max - d * d) / 2, floor * 2)) : 0;
     const mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
     for (const [color, width] of [[PALETTE.navy, 5], [PALETTE.soil, 2]] as const) {
       c.strokeStyle = color; c.lineWidth = width; c.lineCap = 'round';

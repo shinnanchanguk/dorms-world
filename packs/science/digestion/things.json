@@ -25,6 +25,7 @@
     "takes": [
       "bread"
     ],
-    "gives": "mush"
+    "gives": "mush",
+    "label": "위"
   }
 }
