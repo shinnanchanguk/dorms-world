@@ -192,7 +192,7 @@ say(`3/3 도름스로 보내는 중이에요(팩 파일 ${names.length}개, ${Ma
 const sent = await withKey(key => call('/api/world/packs', { method: 'POST', key, body: { id, files, ...(note ? { note } : {}) } }));
 const d = sent.data, msg = typeof d.message === 'string' ? plain(d.message, 600) : '';
 if (sent.status === 200 && d.number) {
-  say(`\n보냈어요. 요청 ${Number(d.number)}번이에요${Number(d.revision) > 1 ? `(${Number(d.revision)}번째로 고쳐 보냄)` : ''}.\n운영자가 직접 해 본 뒤 승인하면 도름스 월드와 오락실에 선생님 이름으로 실려요. 결과는 도름스 쪽지로 와요.\n어떻게 됐는지 보려면: npm run submit -- --status`);
+  say(`\n보냈어요. 요청 ${Number(d.number)}번이에요${Number(d.revision) > 1 ? `(${Number(d.revision)}번째로 고쳐 보냄)` : ''}.\n${d.auto ? '이미 올라간 게임을 고친 판이라 자동 검사를 통과하면 바로 실려요(운영자에게는 알림이 가요).' : '운영자가 직접 해 본 뒤 승인하면 도름스 월드와 오락실에 선생님 이름으로 실려요.'} 결과는 도름스 쪽지로 와요.\n어떻게 됐는지 보려면: npm run submit -- --status`);
   process.exit(0);
 }
 if (sent.status === 422 && d.error === 'unit') stop(`${msg || '단원 이름을 도름스 오락실의 단원에서 찾지 못했어요.'}\n${Array.isArray(d.candidates) && d.candidates.length ? `이 가운데에서 골라 pack.json 의 units 에 그대로 적어 주세요:\n  ${d.candidates.slice(0, 40).map(c => plain(c, 80)).join('\n  ')}` : '쓸 수 있는 이름은 npm run units 로 볼 수 있어요.'}`);
