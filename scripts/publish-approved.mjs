@@ -111,7 +111,14 @@ export async function publish(item) {
     const kind = tryly('git', ['cat-file', '-t', code.base]);
     if (kind !== 'commit') return { result: 'failed', reason: `판 코드가 고친 자리(${code.base.slice(0, 7)})를 저장소에서 찾지 못했어요. 선생님께 git pull 로 최신을 받은 뒤 다시 보내 달라고 알려 주세요.` };
     try { sh('git', ['merge-base', '--is-ancestor', code.base, 'origin/main']); } catch { return { result: 'failed', reason: `판 코드가 고친 자리(${code.base.slice(0, 7)})가 운영 판의 기록에 없어요. 선생님께 git pull 로 최신을 받은 뒤 다시 보내 달라고 알려 주세요.` }; }
-    sh('git', ['checkout', '-q', '-B', branch, code.base]);
+    // 선생님이 고친 파일이 그사이 운영 판에서 하나도 안 바뀌었으면 운영 판 위에 바로 얹는다. 옛 자리에서 가지를 내면
+    // 그 가지의 작업 설정(.github/workflows)이 운영 판과 달라져, 이 작업의 열쇠로는 밀 수 없다(GitHub 가 막는다).
+    const touched0 = [...codePaths, ...code.deleted];
+    const moved = tryly('git', ['diff', '--name-only', code.base, 'origin/main', '--', ...touched0]);
+    sh('git', ['checkout', '-q', '-B', branch, moved ? code.base : 'origin/main']);
+    if (moved && tryly('git', ['diff', '--name-only', code.base, 'origin/main', '--', '.github/workflows'])) {
+      return { result: 'failed', reason: `선생님이 고친 판 파일이 그새 운영 판에서도 바뀌었고 작업 설정도 달라져 자동으로 얹지 못했어요. 운영자가 작업 창에서 맞춰 실어요(바뀐 파일: ${clean(moved.split('\n').join(', '), 200)}).` };
+    }
   } else sh('git', ['checkout', '-q', '-B', branch, 'origin/main']);
   if (item.mode === 'update' && !exists) return { result: 'failed', reason: `${item.packId} 를 고친 판인데 실려 있는 팩이 없어요.` };
   rmSync(dir, { recursive: true, force: true });
