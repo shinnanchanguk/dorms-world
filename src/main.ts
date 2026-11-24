@@ -80,14 +80,15 @@ function packScreen(p: Pack, people = 4, review: Review | null = null) {
     approved: '승인된 요청이에요. 몇 분 안에 자동 검사를 거쳐 실려요.', publishing: '승인돼서 싣는 중이에요.', published: '이미 실린 요청이에요.',
     rejected: '돌려보낸 요청이에요. 선생님이 고쳐서 다시 보내면 새 판으로 바뀌어요.', failed: '싣다가 막힌 요청이에요. 까닭은 도름스 쪽지에 있어요.',
   };
-  const stateLine = viaDorms ? `${dormsLine[review?.status ?? ''] ?? '요청 상태를 읽지 못했어요.'}${review?.others.length ? ` 판 코드가 함께 왔어요(${review.others.length}개). 새 코드는 실린 뒤에야 돌아서, 여기서는 지금 판으로 보여요. 코드는 작업 창에서 "요청 확인해"로 살펴봐 주세요.` : ''}`
+  const autoLine = review?.auto && (review.status === 'approved' || review.status === 'publishing') ? '만든 선생님이 고친 판이라 운영자 승인 없이 자동 검사를 거쳐 바로 실려요.' : '';
+  const stateLine = viaDorms ? `${autoLine || (dormsLine[review?.status ?? ''] ?? '요청 상태를 읽지 못했어요.')}${review?.others.length ? ` 판 코드가 함께 왔어요(${review.others.length}개). 새 코드는 실린 뒤에야 돌아서, 여기서는 지금 판으로 보여요. 코드는 작업 창에서 "요청 확인해"로 살펴봐 주세요.` : ''}`
     : review?.state === 'merged' ? '이미 실린 요청이에요.' : review?.state === 'closed' ? '닫힌 요청이에요.'
     : review?.others.length ? `이 요청에는 이 팩 말고 바뀐 파일이 ${review.others.length}개 있어요. 판을 고친 것은 여기서 돌지 않으니 작업 창에서 살펴봐 주세요.`
     : '팩 파일만 바뀐 요청이에요. 아래에서 직접 해 보고, 괜찮으면 승인하러 가서 병합 단추를 누르면 실려요.';
   const reviewBox = review ? `<div class="w-review" role="note">
       <p class="w-review-line"><strong>요청 ${review.number}번을 살펴보는 중이에요.</strong> ${viaDorms ? '보낸 선생님' : '올린 사람'} <span class="w-nick">@${esc(review.creator?.nickname ?? review.author)}</span> · 살펴보는 판 ${esc(review.sha.slice(0, 7))}</p>
       <p class="w-review-line">${esc(stateLine)}</p>
-      ${review.update ? `<p class="w-review-line"><strong>이미 실려 있는 팩을 고친 판이에요.</strong> 승인하면 실려 있는 ${esc(p.id)} 가 이 내용으로 통째로 바뀌어요.</p>` : ''}
+      ${review.update ? `<p class="w-review-line"><strong>이미 실려 있는 팩을 고친 판이에요.</strong> ${review.auto ? '실리면' : '승인하면'} 실려 있는 ${esc(p.id)} 가 이 내용으로 통째로 바뀌어요.</p>` : ''}
       ${review.note ? `<p class="w-review-line">선생님 한마디: ${esc(review.note)}</p>` : ''}
       ${review.decisionNote && review.status === 'rejected' ? `<p class="w-review-line">돌려보내며 남긴 말: ${esc(review.decisionNote)}</p>` : ''}
       ${open && review.others.length ? `<p class="w-review-files">${review.others.slice(0, 8).map(esc).join(', ')}${review.others.length > 8 ? ' 등' : ''}</p>` : ''}

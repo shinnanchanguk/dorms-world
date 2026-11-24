@@ -121,6 +121,8 @@ export async function publish(item) {
     }
   } else sh('git', ['checkout', '-q', '-B', branch, 'origin/main']);
   if (item.mode === 'update' && !exists) return { result: 'failed', reason: `${item.packId} 를 고친 판인데 실려 있는 팩이 없어요.` };
+  // 자동으로 올리는 고친 판은 안내(kit/)·자동 검사(tests/)를 바꾸지 못한다(도름스 0828 과 같은 규칙을 여기서도 한 번 더). 그런 판은 운영자가 작업 창에서 승인한다
+  if (item.auto && [...codePaths, ...code.deleted].some(p => /^(kit|tests)\//.test(p))) return { result: 'failed', reason: '선생님 AI 안내(kit)나 자동 검사(tests)를 바꾼 판이라 운영자가 코드를 읽고 승인해야 해요.' };
   rmSync(dir, { recursive: true, force: true });
   for (const [name, body] of Object.entries(packFiles)) { const to = join(dir, name); mkdirSync(dirname(to), { recursive: true }); writeFileSync(to, body); }
   // 판 코드: 약속한 자리(platform/ src/ tests/ kit/ public/)에만 쓴다. 가는 길에 링크가 있으면 쓰지 않는다(저장소 밖으로 새지 않게)
