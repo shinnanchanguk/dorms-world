@@ -107,7 +107,10 @@ export async function loadDormsReview(id: string): Promise<Review> {
   const packId = str(d.packId, 90);
   if (!/^[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}$/.test(packId)) throw new Error('요청의 팩 이름을 읽지 못했어요.');
   const files = d.files && typeof d.files === 'object' && !Array.isArray(d.files) ? d.files as Record<string, unknown> : {};
-  const names = Object.keys(files);
+  // 판 코드(code/…)는 이 화면에서 돌리지 않는다. 무엇이 왔는지 이름만 보여 준다
+  const code = Object.keys(files).filter(n => n.startsWith('code/') && n !== 'code/.base' && n !== 'code/.deleted').map(n => n.slice(5).slice(0, 120)).sort();
+  const gone = typeof files['code/.deleted'] === 'string' ? (files['code/.deleted'] as string).split('\n').map(v => v.trim()).filter(Boolean).slice(0, 80).map(v => `${v.slice(0, 120)}(지움)`) : [];
+  const names = Object.keys(files).filter(n => !n.startsWith('code/'));
   if (!names.length || names.length > MAX_FILES) throw new Error('팩 파일 수가 맞지 않아요.');
   const store = new Map<string, string>();
   for (const n of names) {
@@ -120,13 +123,18 @@ export async function loadDormsReview(id: string): Promise<Review> {
   try { meta = JSON.parse(store.get('pack.json') ?? ''); } catch { throw new Error('pack.json 을 읽을 수 없어요.'); }
   const sprites = names.map(n => /^sprites\/([a-z0-9-]+)\.txt$/.exec(n)?.[1]).filter((v): v is string => !!v);
   if (sprites.length > 40) throw new Error('그림은 40개까지예요.');
-  const pack = buildPack(meta, rel => store.get(rel), null, sprites);
+  let pack: ReturnType<typeof buildPack>;
+  try { pack = buildPack(meta, rel => store.get(rel), null, sprites); }
+  catch (err) {
+    if (!code.length && !gone.length) throw err;
+    throw new Error(`이 팩은 함께 온 판 코드(${[...code, ...gone].slice(0, 6).join(', ')}${code.length + gone.length > 6 ? ' 등' : ''})가 있어야 돌아서, 실린 판에서는 아직 열 수 없어요. 작업 창에서 "요청 확인해"로 살펴봐 주세요. (${(err as Error).message})`);
+  }
   const status = str(d.status, 20);
   return {
     number: Number(d.number) || 0, title: str(d.title, 120), author: str(d.author?.nickname, 40), url: '',
     state: status === 'published' ? 'merged' : status === 'rejected' ? 'closed' : 'open', sha: str(d.sha, 64),
     pack: { ...pack, id: packId }, design: (store.get('DESIGN.md') ?? '').slice(0, 20000),
-    others: [], extraPacks: [], source: 'dorms', status, note: str(d.note, 500), decisionNote: str(d.decisionNote, 500), update: d.mode === 'update',
+    others: [...code, ...gone], extraPacks: [], source: 'dorms', status, note: str(d.note, 500), decisionNote: str(d.decisionNote, 500), update: d.mode === 'update',
   };
 }
 

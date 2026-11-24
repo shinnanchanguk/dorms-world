@@ -1,11 +1,12 @@
 // 도름스에서 운영자가 승인한 팩을 가져와 이 저장소에 싣는다(GitHub Actions 의 '승인된 팩 싣기'가 돌린다. 사람이 손으로 돌리지 않는다).
-// 차례: 도름스에서 승인된 요청 받기 → 팩 파일만 써넣기 → 가지에 올리고 요청(PR) 열기 → 자동 검사 → 병합 → 배포 확인 → 도름스에 결과 알리기.
+// 차례: 도름스에서 승인된 요청 받기 → 팩 파일(과 운영자가 살펴본 판 코드) 써넣기 → 가지에 올리고 요청(PR) 열기 → 자동 검사 → 병합 → 배포 확인 → 도름스에 결과 알리기.
 // 팩의 글은 모두 남이 쓴 것이다. 정해진 경로에만 쓰고, 그 글을 명령으로 돌리지 않는다(셸을 거치지 않고 인자로만 넘긴다).
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CODE_PREFIX, readCode } from './code-files.mjs';
 
 // 비밀값이 가는 곳은 도름스 하나다. 시험할 때만(따로 켜서) 다른 주소를 쓴다
 const ORIGIN = process.env.DORMS_ORIGIN && process.env.DORMS_ALLOW_CUSTOM_ORIGIN === '1' ? process.env.DORMS_ORIGIN.replace(/\/+$/, '') : 'https://dorms.school';
@@ -32,7 +33,7 @@ export function problemOf(item) {
   if (item.mode !== 'create' && item.mode !== 'update') return '새 팩인지 고친 판인지 알 수 없어요';
   const files = item.files;
   if (!files || typeof files !== 'object' || Array.isArray(files)) return '파일이 없어요';
-  const names = Object.keys(files);
+  const names = Object.keys(files).filter(n => !n.startsWith(CODE_PREFIX));   // 판 코드는 아래 readCode 가 따로 본다
   if (!names.length || names.length > MAX_COUNT) return '파일 수가 맞지 않아요';
   let total = 0;
   for (const n of names) {
@@ -44,6 +45,8 @@ export function problemOf(item) {
     total += size;
   }
   if (total > MAX_TOTAL) return '팩이 너무 커요';
+  const code = readCode(files);
+  if (typeof code === 'string') return code;
   if (!files['pack.json'] || !files['DESIGN.md']) return 'pack.json 이나 DESIGN.md 가 없어요';
   if (shaOf(files) !== item.sha) return '운영자가 살펴본 판과 받은 파일이 달라요';
   let meta;
@@ -79,6 +82,7 @@ async function waitCheck(pr, head) {
     const state = `${view.mergeStateStatus} ${checks.map(c => `${c.status}:${c.conclusion}`).join(',')}`;
     if (state !== last) { console.log(`  요청 상태 ${state}`); last = state; }
     if (checks.some(c => c.status === 'COMPLETED' && !['SUCCESS', 'NEUTRAL', 'SKIPPED'].includes(c.conclusion))) return { ok: false, failed: true };
+    if (view.mergeStateStatus === 'DIRTY') return { ok: false, dirty: true };   // 판 코드가 그새 바뀐 운영 판과 겹친다
     if (['CLEAN', 'UNSTABLE', 'HAS_HOOKS'].includes(view.mergeStateStatus) && checks.some(c => c.conclusion === 'SUCCESS')) return { ok: true };
   }
   return { ok: false, late: true };
@@ -95,38 +99,67 @@ async function waitDeploy(commit) {
   return 'unknown';
 }
 
-async function publish(item) {
+export async function publish(item) {
   const [subject, pack] = item.packId.split('/'), dir = join('packs', subject, pack), branch = `pack/${subject}--${pack}`;
+  const code = readCode(item.files), codePaths = Object.keys(code.code), hasCode = codePaths.length + code.deleted.length > 0;
+  const packFiles = Object.fromEntries(Object.entries(item.files).filter(([k]) => !k.startsWith(CODE_PREFIX)));
   const title = label(item.title, 60) || item.packId, who = label(item.author, 30) || '도름스 선생님', no = Number(item.number) | 0;
   sh('git', ['fetch', '-q', 'origin', 'main']);
-  sh('git', ['checkout', '-q', '-B', branch, 'origin/main']);
-  const exists = existsSync(join(dir, 'pack.json'));
+  const exists = (() => { try { sh('git', ['cat-file', '-e', `origin/main:packs/${subject}/${pack}/pack.json`]); return true; } catch { return false; } })();
+  if (hasCode) {
+    // 판 코드는 선생님이 내려받은 판(base) 위에서 고친 것이다. 그 자리에서 가지를 내어 요청을 열면, 그사이 운영 판이 바뀐 곳은 GitHub 가 합치고 겹치면 알려 준다.
+    const kind = tryly('git', ['cat-file', '-t', code.base]);
+    if (kind !== 'commit') return { result: 'failed', reason: `판 코드가 고친 자리(${code.base.slice(0, 7)})를 저장소에서 찾지 못했어요. 선생님께 git pull 로 최신을 받은 뒤 다시 보내 달라고 알려 주세요.` };
+    try { sh('git', ['merge-base', '--is-ancestor', code.base, 'origin/main']); } catch { return { result: 'failed', reason: `판 코드가 고친 자리(${code.base.slice(0, 7)})가 운영 판의 기록에 없어요. 선생님께 git pull 로 최신을 받은 뒤 다시 보내 달라고 알려 주세요.` }; }
+    sh('git', ['checkout', '-q', '-B', branch, code.base]);
+  } else sh('git', ['checkout', '-q', '-B', branch, 'origin/main']);
   if (item.mode === 'update' && !exists) return { result: 'failed', reason: `${item.packId} 를 고친 판인데 실려 있는 팩이 없어요.` };
   rmSync(dir, { recursive: true, force: true });
-  for (const [name, body] of Object.entries(item.files)) { const to = join(dir, name); mkdirSync(dirname(to), { recursive: true }); writeFileSync(to, body); }
+  for (const [name, body] of Object.entries(packFiles)) { const to = join(dir, name); mkdirSync(dirname(to), { recursive: true }); writeFileSync(to, body); }
+  // 판 코드: 약속한 자리(platform/ src/ tests/ kit/ public/)에만 쓴다. 가는 길에 링크가 있으면 쓰지 않는다(저장소 밖으로 새지 않게)
+  const lst = p => { try { return lstatSync(p); } catch { return null; } };   // 깨진 링크도 잡는다(existsSync 는 링크를 따라가 없다고 한다)
+  const safeTo = rel => {
+    let cur = '.';
+    for (const part of rel.split('/').slice(0, -1)) { cur = join(cur, part); const st = lst(cur); if (st && !st.isDirectory()) throw new Error(`판 파일 자리에 폴더가 아닌 것이 있어요: ${rel}`); }
+    const st = lst(rel);
+    if (st && !st.isFile()) throw new Error(`판 파일 자리가 보통 파일이 아니에요: ${rel}`);
+    return rel;
+  };
+  // 모든 자리를 먼저 검사하고 나서 쓴다(중간에 막혀 반쯤 쓴 코드가 남지 않게)
+  for (const path of [...codePaths, ...code.deleted]) safeTo(path);
+  for (const path of codePaths) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, code.code[path]); }
+  for (const path of code.deleted) rmSync(path, { force: true });
   // 만든 사람 사진은 팩에 넣지 않는다: 얼굴일 수 있는 사진을 공개 저장소 기록에 영영 남기지 않으려는 것이고, 운영자가 살펴본 판에도 들어 있지 않다
   // 오락실 카드와 공유 그림에 쓸 맵 미리보기를 함께 싣는다(우리 코드가 그린 그림이다. 안 되면 그림 없이 간다)
   const shot = join('public', 'previews', `${subject}--${pack}.png`);
   let preview = false;
-  try {
+  if (!hasCode) try {
     if (!existsSync('node_modules/.bin/vite')) sh('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { timeout: 180_000 });
     sh('node', ['scripts/render-previews.mjs', item.packId], { timeout: 120_000 });
     preview = existsSync(shot);
   } catch (err) { console.log(`  미리보기 그림을 뽑지 못했어요(${clean(String(err.stderr || err.message), 160)}). 그림 없이 실어요.`); }
-  sh('git', ['add', '-A', '--', dir, ...(preview ? [shot] : [])]);
-  if (!tryly('git', ['status', '--porcelain', '--', dir, ...(preview ? [shot] : [])])) return { result: 'published', commit: sh('git', ['rev-parse', 'origin/main']), same: true, preview: existsSync(shot) };   // 이미 같은 내용이 실려 있다(지난번에 알리기만 실패)
-  if (item.mode === 'create' && exists) { sh('git', ['reset', '-q', '--hard', 'origin/main']); return { result: 'failed', reason: `${item.packId} 는 이미 있는 팩 이름이에요. 폴더 이름을 바꿔 다시 보내 달라고 알려 주세요.` }; }
-  const message = `${item.mode === 'create' ? 'Add' : 'Update'} pack ${item.packId} (request ${no})\n\n${title}\n만든 사람: ${who} (도름스)\n도름스 요청 ${no}번, ${item.revision}번째 판. 운영자가 살펴보고 승인함.`;
+  // 판 코드가 든 요청은 미리보기를 뽑지 않는다: 그림을 뽑으려면 받은 코드를 돌려야 하는데, 이 작업에는 비밀값과 쓰기 권한이 있다
+  const touched = [dir, ...(preview ? [shot] : []), ...codePaths, ...code.deleted];
+  sh('git', ['add', '-A', '--', ...touched]);
+  if (!hasCode && !tryly('git', ['status', '--porcelain', '--', ...touched])) return { result: 'published', commit: sh('git', ['rev-parse', 'origin/main']), same: true, preview: existsSync(shot) };   // 이미 같은 내용이 실려 있다(지난번에 알리기만 실패)
+  if (item.mode === 'create' && exists) { sh('git', ['reset', '-q', '--hard']); return { result: 'failed', reason: `${item.packId} 는 이미 있는 팩 이름이에요. 폴더 이름을 바꿔 다시 보내 달라고 알려 주세요.` }; }
+  const message = `${item.mode === 'create' ? 'Add' : 'Update'} pack ${item.packId} (request ${no})\n\n${title}\n만든 사람: ${who} (도름스)\n도름스 요청 ${no}번, ${item.revision}번째 판. 운영자가 살펴보고 승인함.${hasCode ? `\n판 코드 ${codePaths.length + code.deleted.length}개 포함(선생님이 고친 자리 ${code.base.slice(0, 7)}).` : ''}`;
   sh('git', ['-c', 'user.name=dorms-world', '-c', 'user.email=dorms-world@users.noreply.github.com', 'commit', '-q', ...(AUTHOR ? ['--author', AUTHOR] : []), '-m', message]);
   const head = sh('git', ['rev-parse', 'HEAD']);
   sh('git', ['push', '-q', '--force', 'origin', `${branch}:${branch}`]);
-  const body = `도름스에서 받은 요청 ${no}번이에요(${item.revision}번째 판).\n\n- 팩: \`${item.packId}\`\n- 만든 사람: ${who} (도름스)\n- 운영자가 도름스에서 직접 해 보고 승인했어요.\n\n이 요청은 '승인된 팩 싣기' 작업이 자동으로 열었고, 검사를 통과하면 자동으로 병합해요.`;
+  const body = `도름스에서 받은 요청 ${no}번이에요(${item.revision}번째 판).\n\n- 팩: \`${item.packId}\`\n- 만든 사람: ${who} (도름스)\n- 운영자가 도름스에서 직접 해 보고 승인했어요.${hasCode ? `\n- 판 코드가 함께 왔어요(운영자가 작업 창에서 코드를 읽고 승인함)${(() => { const flag = [...codePaths, ...code.deleted].filter(p => p.startsWith('tests/') || p.startsWith('kit/')); return flag.length ? `. 기존 시험이나 선생님 AI 안내(kit)를 바꾼 파일 ${flag.length}개 포함` : ''; })()}: ${[...codePaths, ...code.deleted.map(d => `${d}(지움)`)].slice(0, 20).map(p => '`' + label(p, 120) + '`').join(', ')}` : ''}\n\n이 요청은 '승인된 팩 싣기' 작업이 자동으로 열었고, 검사를 통과하면 자동으로 병합해요.`;
   // 우리 저장소의 가지에서 연 요청만 본다(남의 포크가 같은 가지 이름으로 연 요청에 속지 않게)
   const ours = () => tryly('gh', ['pr', 'list', '-R', REPO, '--head', branch, '--state', 'open', '--json', 'number,isCrossRepository', '--jq', '[.[] | select(.isCrossRepository == false)][0].number // ""']);
   let pr = ours();
   if (!pr) { sh('gh', ['pr', 'create', '-R', REPO, '--base', 'main', '--head', branch, '--title', `[팩] ${title} (${item.packId})`, '--body', body]); pr = ours(); }
   if (!/^\d+$/.test(pr)) return { result: 'failed', reason: '요청을 열었는데 번호를 찾지 못했어요. 저장소를 확인해 주세요.' };
   const check = await waitCheck(pr, head);
+  if (!check.ok && hasCode && (check.dirty || check.failed)) {
+    // 판 코드가 든 요청은 닫지 않는다: 운영자가 그 요청에서 맞춰 고친 뒤 병합한다
+    const why = check.dirty ? `선생님이 고친 판 코드가 그새 바뀐 운영 판과 겹쳐요. 요청 #${pr} 을 운영자가 맞춰 실어요.` : `판 코드가 자동 검사에서 걸렸어요. 요청 #${pr} 을 운영자가 고쳐 실어요.`;
+    tryly('gh', ['pr', 'comment', pr, '-R', REPO, '--body', why]);
+    return { result: 'failed', reason: why.slice(0, 500) };
+  }
   if (!check.ok) {
     const log = check.failed ? clean(tryly('gh', ['run', 'list', '-R', REPO, '--workflow', 'pack-check.yml', '--branch', branch, '--limit', '1', '--json', 'databaseId', '--jq', '.[0].databaseId']), 20) : '';
     const why = check.why ?? (check.late ? '자동 검사가 12분 안에 끝나지 않았어요.' : `자동 검사에서 걸렸어요(운영 판 기준). ${clean(tryly('gh', ['run', 'view', log, '-R', REPO, '--log-failed']).split('\n').filter(l => /✗|×|FAIL|걸렸|어요|Error/.test(l)).slice(0, 4).map(l => l.split('\t').pop()).join(' / '), 380)}`);
@@ -165,7 +198,9 @@ async function main() {
     console.log(`  결과 ${out.result}${out.reason ? `: ${out.reason}` : ''}`);
     if (UUID.test(String(item?.id))) { const { same, ...rest } = out; if (!(await report(item, rest))) bad++; }
     if (out.result !== 'published') bad++;
-    tryly('git', ['checkout', '-q', '--detach', 'origin/main']);
+    // 한 항목이 끝나면 작업 폴더를 운영 판과 똑같이 되돌린다(받은 코드가 다음 항목의 미리보기 렌더에서 돌지 않게)
+    tryly('git', ['checkout', '-q', '-f', '--detach', 'origin/main']);
+    tryly('git', ['clean', '-fdq', '--', 'packs', 'platform', 'src', 'tests', 'kit', 'public']);
   }
   if (bad) process.exitCode = 1;
 }

@@ -12,6 +12,7 @@ import { readJson, readSprites, readStage } from './pack-io';
 import { createWorld, step, type Pad } from '../platform/sim';
 import { peopleFor, playStage } from '../scripts/bots/engine';
 
+const breathe = () => new Promise<void>(r => setTimeout(r, 20));
 const root = fileURLToPath(new URL('../packs/', import.meta.url));
 const FAMILIES = ['국어', '영어', '수학', '사회', '역사', '도덕·윤리', '과학', '정보', '기술·가정', '음악', '미술', '연극', '체육', '한문·외국어', '교양', '통합교과', '창의적 체험활동', '기타'];
 const dirs = (p: string) => readdirSync(p).filter(n => statSync(join(p, n)).isDirectory());
@@ -98,8 +99,10 @@ describe.each(packs)('팩 $id', ({ id, dir }) => {
     // 깰 수 있게 만들어졌는지: 봇이 단추 지키기·상자 밀기·저울 풀기·친구 머리 딛기로 끝까지 가 본다.
     // 봇이 못 하는 길(친구 둘 이상 쌓기 등)만 남으면 통과도 실패도 아닌 '확인 못 함'(건너뜀)으로 남기고 까닭을 적는다.
     let shared: ReturnType<typeof load> | undefined;   // 인원마다 같은 지도를 써서 봇이 잰 길을 다시 쓴다
-    it.for(peopleFor(meta.players))('%i명이 끝까지 깰 수 있다(봇이 판을 그대로 굴려 본다)', (people, ctx) => {
+    it.for(peopleFor(meta.players))('%i명이 끝까지 깰 수 있다(봇이 판을 그대로 굴려 본다)', async (people, ctx) => {
+      await breathe();   // 봇은 몇 초씩 쉬지 않고 돈다. 그사이 시험 도구와 주고받는 연락이 밀려 'Timeout calling onTaskUpdate' 로 검사 전체가 떨어지지 않게 틈을 준다
       const r = playStage(shared ??= load(), people);
+      await breathe();
       if (r.verdict === 'unknown') { console.warn(`[확인 못 함] ${id} 스테이지 ${file} ${r.note}`); ctx.skip(); }
       expect(r.verdict, `스테이지 ${file} ${r.note}`).toBe('pass');
     }, 90_000);

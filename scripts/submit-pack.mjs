@@ -1,12 +1,14 @@
 // 만든 팩을 도름스로 보낸다: npm run submit -- <교과>/<팩>      내 요청이 어떻게 됐는지: npm run submit -- --status
 // 하는 일: 검사 → 팩 파일 모으기 → (처음 한 번) 브라우저에서 도름스 로그인으로 이 컴퓨터를 허락 → 도름스에 보내기.
 // GitHub 계정은 필요 없다. 도름스가 받아 운영자에게 쪽지를 보내고, 운영자가 해 본 뒤 승인하면 도름스 월드와 오락실에 실린다.
-// 팩 폴더의 자료(글 파일)만 보낸다. 새 장치를 만들려고 판(platform/)을 고쳤다면 npm run submit:code 를 쓴다.
+// 팩 폴더의 자료와, 새 장치를 만들려고 고친 판 코드(platform/, src/, tests/, kit/, public/)를 함께 보낸다.
+// 판 코드는 운영자가 살펴본 뒤 저장소에 요청(PR)으로 들어가 실린다(scripts/code-files.mjs).
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { CODE_BASE, CODE_DELETED, CODE_PREFIX, CODE_ROOTS, isCodePath, readCode } from './code-files.mjs';
 
 const args = process.argv.slice(2);
 const say = msg => console.log(msg);
@@ -107,11 +109,6 @@ let meta;
 try { meta = JSON.parse(readFileSync(join(dir, 'pack.json'), 'utf8').replace(/^\uFEFF/, '')); } catch { stop(`${dir}/pack.json 을 읽지 못했어요. 쉼표와 따옴표를 확인해 주세요.`); }
 if (meta.id !== id) stop(`pack.json 의 id("${meta.id}")가 폴더 이름(${id})과 달라요.`);
 
-// 새 장치를 만들려고 판을 고쳤으면 이 길로는 못 보낸다(팩만 가면 운영 판에서 돌지 않는다)
-const git = spawnSync('git', ['status', '--porcelain', '--', 'platform', 'src', 'tests'], { encoding: 'utf8' });
-const touched = git.status === 0 ? git.stdout.split('\n').map(l => l.slice(3).trim()).filter(Boolean) : [];
-if (touched.length && !args.includes('--pack-only')) stop(`판을 고친 파일이 있어요(${touched.slice(0, 4).join(', ')}${touched.length > 4 ? ' 등' : ''}).\n이 명령은 팩 폴더의 자료만 보내요. 새 장치를 더한 것이라면 kit/DEVICE_GUIDE.md 의 '올리기'를 따라 npm run submit:code -- ${id} 로 올려 주세요(GitHub 계정이 필요해요).\n판은 실수로 바뀐 것이고 팩만 보내려면 뒤에 --pack-only 를 붙여 주세요.`);
-
 say('1/3 검사하는 중이에요(팩 검사, 전체 시험, 빌드, 도름스체크 보안 점검).');
 for (const [label, a] of [['팩 검사', ['run', 'check:packs']], ['전체 시험', ['test']], ['빌드', ['run', 'build']], ['도름스체크 보안 점검', ['run', 'check:security']]]) {
   const r = spawnSync(win ? 'npm.cmd' : 'npm', a, { encoding: 'utf8', shell: win });   // 윈도우의 npm 은 npm.cmd 라 셸을 거쳐야 돈다
@@ -145,13 +142,51 @@ if (!files['DESIGN.md']) stop('설계서(DESIGN.md)가 없어요. 설계서를 �
 if (!names.some(n => n.endsWith('.map.txt'))) stop('스테이지가 하나도 없어요.');
 if (names.length > MAX_COUNT) stop(`파일이 너무 많아요(${names.length}개, 120개까지).`);
 if (total > MAX_TOTAL) stop(`팩이 너무 커요(${Math.round(total / 1000)}KB, 300KB까지).`);
+// 판 코드: 내려받은 판(운영 저장소와 갈라진 자리)에서 바뀐 판 파일을 모은다. 팩만 보내려면 --pack-only.
+const git = (...a) => { const r = spawnSync('git', a, { encoding: 'utf8' }); return r.status === 0 ? (r.stdout ?? '').trim() : null; };
+const norm = t => t.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+let codeCount = 0, codeBytes = 0;
+if (!args.includes('--pack-only') && git('rev-parse', '--is-inside-work-tree') === 'true') {
+  const remote = (git('remote') ?? '').split('\n').find(r => /shinnanchanguk\/dorms-world(\.git)?$/.test(git('remote', 'get-url', r) ?? '')) ?? 'origin';
+  git('fetch', '-q', remote, 'main');   // 인터넷이 안 되면 가진 것으로 견준다
+  const base = git('merge-base', 'HEAD', `${remote}/main`) ?? git('rev-parse', 'HEAD');
+  const tracked = (git('diff', '--name-only', base, '--', ...CODE_ROOTS) ?? '').split('\n');
+  const untracked = (git('ls-files', '--others', '--exclude-standard', '--', ...CODE_ROOTS) ?? '').split('\n');
+  const changed = [...new Set([...tracked, ...untracked])].filter(Boolean).sort();
+  const sendCode = {}, deleted = [], cannot = [];
+  for (const path of changed) {
+    if (!existsSync(path)) { if (isCodePath(path)) deleted.push(path); continue; }
+    if (!isCodePath(path)) { cannot.push(path); continue; }
+    const st = lstatSync(path);
+    if (!st.isFile() || st.nlink > 1) { cannot.push(path); continue; }
+    const body = norm(readFileSync(path, 'utf8'));
+    const was = git('show', `${base}:${path}`);
+    if (was !== null && norm(was).trimEnd() === body.trimEnd()) continue;   // 윈도우 줄 끝만 바뀐 파일은 보내지 않는다
+    if (body.includes('\0') || body.includes('�')) { cannot.push(path); continue; }
+    sendCode[path] = body;
+  }
+  const others = (git('status', '--porcelain') ?? '').split('\n').map(l => l.replace(/^\s?\S{1,2}\s+/, '').trim().replace(/^"|"$/g, '')).filter(f => f && !f.startsWith('packs/') && !CODE_ROOTS.some(r => f === r || f.startsWith(r + '/')) && !f.startsWith('.claude/'));
+  if (Object.keys(sendCode).length || deleted.length) {
+    for (const [path, body] of Object.entries(sendCode)) files[CODE_PREFIX + path] = body;
+    files[CODE_BASE] = base;
+    if (deleted.length) files[CODE_DELETED] = deleted.join('\n');
+    const checked = readCode(files);
+    if (typeof checked === 'string') stop(`판 코드를 보낼 수 없어요: ${checked}`);
+    codeCount = Object.keys(sendCode).length + deleted.length;
+    codeBytes = Object.values(sendCode).reduce((n, b) => n + Buffer.byteLength(b), 0);
+    say(`  판 코드도 함께 보내요(바뀐 파일 ${Object.keys(sendCode).length}개${deleted.length ? `, 지운 파일 ${deleted.length}개` : ''}). 운영자가 코드를 살펴본 뒤 실려요.`);
+    for (const p of Object.keys(sendCode).slice(0, 12)) say(`    ${p}`);
+  }
+  if (cannot.length) say(`  판 파일 가운데 보내지 않는 것(글 파일이 아니거나 둘 수 없는 이름): ${cannot.slice(0, 6).join(', ')}${cannot.length > 6 ? ' 등' : ''}`);
+  if (others.length) say(`  보내지 않는 파일(팩도 판 코드도 아닌 것, 예: scripts·package.json·설정): ${others.slice(0, 6).join(', ')}${others.length > 6 ? ' 등' : ''}\n  여기에 꼭 필요한 바뀜이 있으면 설계서(DESIGN.md)의 '의견'에 적어 주세요. 운영자가 맞춰 넣어요.`);
+}
 if (skipped.length) say(`  보내지 않는 파일: ${skipped.slice(0, 6).join(', ')}${skipped.length > 6 ? ' 등' : ''}${skipped.some(s => /\.(png|webp)$/.test(s)) ? '\n  (만든 사람 그림은 기본 도름이로 보여요. 사진은 싣지 않아요)' : ''}`);
 
 if (args.includes('--dry-run')) {   // 보내지 않고 무엇이 갈지만 본다(검사는 모두 돌린다)
-  say(`보내지 않고 여기서 멈춰요(--dry-run). 보낼 파일 ${names.length}개, ${Math.max(1, Math.round(total / 1000))}KB:\n${names.map(n => '  ' + n).join('\n')}`);
+  say(`보내지 않고 여기서 멈춰요(--dry-run). 보낼 팩 파일 ${names.length}개, ${Math.max(1, Math.round(total / 1000))}KB${codeCount ? `, 판 코드 ${codeCount}개 ${Math.max(1, Math.round(codeBytes / 1000))}KB` : ''}:\n${Object.keys(files).filter(n => n !== CODE_BASE).map(n => '  ' + n).join('\n')}`);
   process.exit(0);
 }
-say(`3/3 도름스로 보내는 중이에요(파일 ${names.length}개, ${Math.max(1, Math.round(total / 1000))}KB).`);
+say(`3/3 도름스로 보내는 중이에요(팩 파일 ${names.length}개, ${Math.max(1, Math.round(total / 1000))}KB${codeCount ? `, 판 코드 ${codeCount}개` : ''}).`);
 const sent = await withKey(key => call('/api/world/packs', { method: 'POST', key, body: { id, files, ...(note ? { note } : {}) } }));
 const d = sent.data, msg = typeof d.message === 'string' ? plain(d.message, 600) : '';
 if (sent.status === 200 && d.number) {

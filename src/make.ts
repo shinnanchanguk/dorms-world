@@ -46,7 +46,7 @@ export function makeScreen(app: HTMLElement, shell: (inner: string, status: stri
       </div>
       <div>
         <p class="ar-kicker w-kicker">내 AI 에 붙여 넣을 안내문</p>
-        <pre class="w-prompt" tabindex="0" aria-label="안내문">${esc(PROMPT)}</pre>
+        <pre class="w-prompt" tabindex="0" aria-label="안내문">${esc(PROMPT).replace(/https?:\/\/\S+/g, u => `<span class="w-url">${u}</span>`)}</pre>
         <div class="w-make-actions"><button class="ar-key mustard" data-copy>${icon('copy', 17)}<span>안내문 복사</span></button><button class="ar-key ghost" data-copy-url>${icon('copy', 17)}<span>내려받는 주소 복사</span></button></div>
         <p class="ar-kicker w-kicker">필요한 것</p>
         <ul class="w-notes"><li>윈도우 컴퓨터나 맥(어느 쪽이든 똑같이 돼요)</li><li>내 컴퓨터에서 도는 코딩 AI</li><li>Node.js 와 Git(없으면 AI 가 설치를 도와줘요)</li><li>도름스 계정(교사 인증을 마친 계정)</li></ul>

@@ -35,3 +35,27 @@ describe('승인된 팩 싣기: 받은 항목 검사', () => {
     expect(problemOf(item({ files: noDesign, sha: shaOf(noDesign) }))).toContain('DESIGN.md');
   });
 });
+
+describe('승인된 팩 싣기: 함께 온 판 코드', () => {
+  const base = 'a'.repeat(40);
+  const withCode = (extra: Record<string, string>) => { const f = { ...files, 'code/.base': base, ...extra }; return item({ files: f, sha: shaOf(f) }); };
+  it('약속한 자리의 판 코드는 싣는다', () => {
+    expect(problemOf(withCode({ 'code/platform/behaviors/order.ts': 'export default {}', 'code/src/main.ts': '//', 'code/kit/STAGE_FORMAT.md': '#' }))).toBe('');
+    expect(problemOf(withCode({ 'code/.deleted': 'platform/old.ts', 'code/platform/new.ts': '//' }))).toBe('');
+  });
+  it('약속 밖의 자리, 숨김 파일, 실행될 수 있는 그림은 싣지 않는다', () => {
+    for (const bad of ['code/.github/workflows/a.yml', 'code/scripts/publish-approved.mjs', 'code/package.json', 'code/platform/../scripts/x.mjs', 'code/platform/.env', 'code/public/x.svg', 'code/public/a.html', 'code/platform/-x.ts', 'code/vite.config.ts', 'code/room-server/src/index.ts', 'code/platform']) {
+      expect(problemOf(withCode({ [bad]: 'x' })), bad).toContain('둘 수 없는 판 파일');
+    }
+  });
+  it('어느 판에서 고쳤는지 모르면 싣지 않는다', () => {
+    const f = { ...files, 'code/platform/a.ts': '//' };
+    expect(problemOf(item({ files: f, sha: shaOf(f) }))).toContain('code/.base');
+    expect(problemOf(withCode({ 'code/.base': 'main', 'code/platform/a.ts': '//' }))).toContain('code/.base');
+  });
+  it('지울 파일도 약속한 자리만', () => {
+    expect(problemOf(withCode({ 'code/.deleted': '.github/workflows/pack-check.yml' }))).toContain('지울 수 없는');
+    expect(problemOf(withCode({ 'code/.deleted': 'platform/a.ts', 'code/platform/a.ts': '//' }))).toContain('지울 수 없는');
+  });
+  it('코드만 고치고 내용이 없는 판은 싣지 않는다', () => { expect(problemOf(withCode({}))).toContain('비어'); });
+});
