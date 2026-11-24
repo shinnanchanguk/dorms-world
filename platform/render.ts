@@ -1,10 +1,10 @@
 /** 그리기. 캔버스 2D, 점 그림이 뭉개지지 않게 늘 정수 자리에 그린다. */
 import { ATLAS, BODY_SHADES, MOTION, PALETTE, SPRITES, VIEW_H, VIEW_W, type SpriteName } from './look';
 import { T, type Stage } from './stage';
-import { actionAt, atDoor, bridgeSolid, createWorld, type Action, type Player, type World } from './sim';
+import { actionAt, atDoor, bridgeSolid, createWorld, ropeLinks, type Action, type Player, type World } from './sim';
 import { INKS, type Sprite } from './sprite';
 import { itemRect, itemShown } from './things';
-import { ctxFor, thingActionAt, thingActionText } from './thing-sim';
+import { ctxFor, itemLabel, thingActionAt, thingActionText } from './thing-sim';
 import { drawGraphBack, drawGraphFront, graphHud, latexText } from './graph/draw';
 import { hasOldHangul, oldHangulRuns } from './text';
 
@@ -107,6 +107,24 @@ export function cameraFor(w: World, me: number | null, prev?: Camera, lift = 0):
   return { x, y: sh - (VIEW_H - lift) / scale, scale, lift };
 }
 
+/** 줄 묶기: 짝의 허리를 줄로 잇는다. 줄이 남으면 아래로 처진다. 남색 테두리 안에 모래색 줄(화풍의 물감만 쓴다). */
+function drawRopes(c: CanvasRenderingContext2D, w: World) {
+  const r = w.stage.rope;
+  if (!r) return;
+  const max = r.length * T;
+  for (const [a, b] of ropeLinks(w)) {
+    const ax = a.x + a.w / 2, ay = a.y + a.h * 0.62, bx = b.x + b.w / 2, by = b.y + b.h * 0.62;
+    const d = Math.hypot(bx - ax, by - ay);
+    if (d > max * 3) continue;
+    const sag = d < max ? Math.sqrt(max * max - d * d) / 2 : 0;
+    const mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
+    for (const [color, width] of [[PALETTE.navy, 5], [PALETTE.soil, 2]] as const) {
+      c.strokeStyle = color; c.lineWidth = width; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo(mx, my, bx, by); c.stroke();
+    }
+  }
+}
+
 function drawStage(c: CanvasRenderingContext2D, w: World, now: number, me: number | null, names?: readonly string[]) {
   const s = w.stage;
   for (const b of s.bridges) {
@@ -141,6 +159,7 @@ function drawStage(c: CanvasRenderingContext2D, w: World, now: number, me: numbe
   });
   for (const g of s.signs) drawSign(c, g.x, g.y);
   const order = w.players.filter(p => !p.inDoor).sort((a, b) => Number(a.i === me) - Number(b.i === me));
+  drawRopes(c, w);
   for (const p of order) drawDoreumi(c, p, now);
   drawGraphFront(c, s.graph, w.g, now, (x, y) => { const cc = Math.floor(x / T), r = Math.floor(y / T); return cc >= 0 && cc < s.cols && r >= 0 && r < s.rows && !!s.solid[r * s.cols + cc]; });
   // 머리 위에 무언가를 든 도름이는 번호표를 옆으로 비켜 적는다(손잡이를 가리지 않게)
@@ -260,7 +279,8 @@ function drawThings(c: CanvasRenderingContext2D, w: World, now: number) {
     const f = k.behavior?.frame ? frameOf(w, i) : -1;
     if (f >= 0) c.drawImage(spriteCanvas(k.frames[f]), Math.round(r.x), Math.round(r.y), k.w, k.h);
     else drawThingSprite(c, k.frames, now + i * 90, Math.round(r.x), Math.round(r.y), k.w, k.h);
-    if (k.label) label(c, k.label, r.x + r.w / 2, r.y - 4);
+    const tag = itemLabel(w, i);
+    if (tag) label(c, tag, r.x + r.w / 2, r.y - 4);
   }
 }
 

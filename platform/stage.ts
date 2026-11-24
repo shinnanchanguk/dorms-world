@@ -22,7 +22,9 @@ export type LegendEntry =
   | { type: 'goal'; accepts?: string[]; need?: number | 'all'; opens?: string[]; label?: string; sprite?: string }
   | GraphLegend;
 
-export type StageJson = { legend?: Record<string, LegendEntry>; hint?: string };
+export type StageJson = { legend?: Record<string, LegendEntry>; hint?: string; rope?: { length?: number; link?: 'pairs' | 'chain' } };
+/** 줄 묶기: 도름이끼리 줄로 묶는다. length 는 줄 길이(칸), link 는 둘씩(pairs) 또는 모두 한 줄로(chain). */
+export type Rope = { length: number; link: 'pairs' | 'chain' };
 
 export type Button = Rect & { ch: string; need: Need; opens: string[] };
 export type Bridge = { ch: string; mode: 'appear' | 'vanish'; cells: [number, number][] };
@@ -45,6 +47,7 @@ export type Stage = {
   graph: GraphStage;
   things: ThingStage;   // things.json 으로 만든 새 물건과 놓는 곳
   hint: string;
+  rope: Rope | null;    // 줄 묶기(없으면 null)
 };
 
 export function resolveNeed(need: Need, players: number): number {
@@ -93,7 +96,17 @@ export function parseStage(mapText: string, json: StageJson = {}, sprites: Recor
   lines.forEach((l, i) => { if (l.length !== cols) throw new Error(`지도 ${i + 1}번째 줄 길이가 달라요(${l.length}칸, 첫 줄은 ${cols}칸).`); });
 
   if (json === null || typeof json !== 'object' || Array.isArray(json)) throw new Error('NN.json 은 { "legend": { ... } } 모양이어야 해요.');
-  for (const k of Object.keys(json)) if (k !== 'legend' && k !== 'hint') throw new Error(`NN.json 의 "${k}" 는 모르는 칸이에요. legend, hint 만 쓸 수 있어요.`);
+  for (const k of Object.keys(json)) if (k !== 'legend' && k !== 'hint' && k !== 'rope') throw new Error(`NN.json 의 "${k}" 는 모르는 칸이에요. legend, hint, rope 만 쓸 수 있어요.`);
+  let rope: Rope | null = null;
+  if (json.rope != null) {
+    const r = json.rope as Record<string, unknown>;
+    if (!r || typeof r !== 'object' || Array.isArray(r)) throw new Error('rope 는 { "length": 4, "link": "pairs" } 모양이에요.');
+    for (const k of Object.keys(r)) if (k !== 'length' && k !== 'link') throw new Error(`rope 의 "${k}" 는 모르는 칸이에요. length, link 만 적어요.`);
+    const length = r.length ?? 4, link = r.link ?? 'pairs';
+    if (typeof length !== 'number' || length < 2 || length > 12) throw new Error('rope 의 length 는 줄 길이예요(2~12칸).');
+    if (link !== 'pairs' && link !== 'chain') throw new Error('rope 의 link 는 "pairs"(둘씩 묶기) 나 "chain"(모두 한 줄로) 이에요.');
+    rope = { length, link };
+  }
   if (json.hint != null && (typeof json.hint !== 'string' || json.hint.length > 60)) throw new Error('hint 는 60자까지의 한 줄이에요.');
   const legend = json.legend ?? {};
   if (legend === null || typeof legend !== 'object' || Array.isArray(legend)) throw new Error('legend 는 { "a": { "type": ... } } 모양이어야 해요.');
@@ -192,5 +205,5 @@ export function parseStage(mapText: string, json: StageJson = {}, sprites: Recor
   for (const ch of thingOpens(things)) graphOpens.add(ch);
   for (const b of bridges) if (!buttons.some(x => x.opens.includes(b.ch)) && !graphOpens.has(b.ch)) throw new Error(`다리 "${b.ch}" 를 여는 단추나 장치가 없어요.`);
   const hint = json.hint ?? '';
-  return { cols, rows, solid, spawn, key, door, buttons, bridges, crates, signs, decos, graph, things: things.kinds.length ? things : NO_THINGS, hint };
+  return { cols, rows, solid, spawn, key, door, buttons, bridges, crates, signs, decos, graph, things: things.kinds.length ? things : NO_THINGS, hint, rope };
 }

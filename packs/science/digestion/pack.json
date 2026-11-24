@@ -1,0 +1,44 @@
+{
+  "id": "science/digestion",
+  "name": "소화 여행",
+  "tagline": "줄로 묶인 짝과 음식을 소장까지",
+  "family": "과학",
+  "schoolLevels": [
+    "초등학교",
+    "중학교"
+  ],
+  "units": [
+    {
+      "band": "el56",
+      "subject": "과학",
+      "unit": "우리 몸의 구조와 기능"
+    },
+    {
+      "band": "ms2",
+      "subject": "과학",
+      "unit": "동물과 에너지"
+    }
+  ],
+  "educationalIntent": "음식이 입, 위, 소장을 지나며 잘게 부서지고 흡수되는 차례를 몸으로 겪습니다. 위가 꿈틀거려 음식을 부수는 일과, 소장 융털이 영양소를 받아들이는 자리를 짝과 함께 지납니다.",
+  "description": "둘씩 줄로 묶인 도름이들이 빵을 위에 넣고 번갈아 눌러 죽으로 만든 뒤 소장으로 나릅니다. 둘째 판에서는 짝의 머리를 딛고 소장 벽을 오르고, 먼저 오른 짝이 줄을 당겨 친구를 끌어 올립니다.",
+  "creator": {
+    "nickname": "도름스",
+    "avatar": null
+  },
+  "players": {
+    "min": 2,
+    "max": 30
+  },
+  "stages": [
+    {
+      "file": "01",
+      "name": "위에서 잘게 부수기",
+      "difficulty": 1
+    },
+    {
+      "file": "02",
+      "name": "소장 벽 오르기",
+      "difficulty": 2
+    }
+  ]
+}

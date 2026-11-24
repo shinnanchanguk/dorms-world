@@ -70,19 +70,23 @@ export function thingActionAt(w: World, p: Player): ThingAction | null {
   if (!s.items.length || p.inDoor) return null;
   const held = heldBy(w.h, p.i);
   if (held >= 0) {
-    const ki = s.items[held].kind;
-    for (let g = 0; g < s.goals.length; g++) {
-      if (!overlap(p, s.goals[g])) continue;
-      if (!s.goals[g].accepts.includes(ki)) return { do: 'no', why: '여기에는 놓을 수 없어요' };
-      return { do: 'put', item: held, goal: g };
+    // 든 물건을 받는 장치(넣으면 바뀌어 나오는 위·맷돌 같은 움직임)가 가까이 있으면 그 장치를 먼저 쓴다. 장치가 아무것도 안 하면 아래 일을 한다
+    const dev = nearestDevice(w, p);
+    if (dev >= 0) {
+      const k = kindOf(w, dev), id = kindOf(w, held).id;
+      if (k.takes.includes(id) || (!k.takes.length && k.behavior!.useText)) {
+        const rest = heldAction(w, p, held);
+        return { do: 'use', item: dev, text: deviceText(w, dev, p), else: rest.do === 'no' ? undefined : rest };
+      }
     }
-    return dropSpot(w, p, held) ? { do: 'drop', item: held } : { do: 'no', why: '여기는 내려놓을 자리가 없어요' };
+    return heldAction(w, p, held);
   }
-  // 그래프 조각·양동이를 들었거나 썰매에 탄 동안은 새 물건을 집거나 쓰지 않는다(두 개를 함께 들지 않게, 그 누름은 그래프 장치로 간다)
-  const g = w.g;
-  if (g && (holdingPiece(g, p.i) >= 0 || g.bucket?.holder === p.i || g.sled?.rider === p.i)) return null;
-  const reach = { x: p.x - 8, y: p.y - 6, w: p.w + 16, h: p.h + 10 };
-  // 선생님이 더한 움직임 가운데 확인으로 쓰는 것(가장 가까운 것 하나)
+  return emptyAction(w, p);
+}
+
+/** 가장 가까운, 확인으로 쓰는 장치(움직임). 없으면 -1. */
+function nearestDevice(w: World, p: Player) {
+  const s = w.stage.things, reach = { x: p.x - 8, y: p.y - 6, w: p.w + 16, h: p.h + 10 };
   let use = -1, useNear = Infinity;
   for (let i = 0; i < s.items.length; i++) {
     const b = kindOf(w, i).behavior;
@@ -92,11 +96,38 @@ export function thingActionAt(w: World, p: Player): ThingAction | null {
     const d = Math.abs(r.x + r.w / 2 - p.x - p.w / 2);
     if (d < useNear) { useNear = d; use = i; }
   }
-  if (use >= 0) {
-    let text = '';
-    try { text = String(kindOf(w, use).behavior!.useText?.(ctxFor(w, use)) ?? '').slice(0, 20); } catch { text = ''; }
-    return { do: 'use', item: use, text: text || `확인: ${kindOf(w, use).name}` };
+  return use;
+}
+function deviceText(w: World, i: number, p: Player) {
+  let text = '';
+  try { text = String(kindOf(w, i).behavior!.useText?.(ctxFor(w, i), view(p)) ?? '').slice(0, 20); } catch { text = ''; }
+  return text || `확인: ${kindOf(w, i).name}`;
+}
+
+/** 물건을 든 사람이 확인을 누르면: 놓는 곳에 넣거나 발밑에 내려놓는다. */
+function heldAction(w: World, p: Player, held: number): ThingAction {
+  const s = w.stage.things;
+  {
+    const ki = s.items[held].kind;
+    for (let g = 0; g < s.goals.length; g++) {
+      if (!overlap(p, s.goals[g])) continue;
+      if (!s.goals[g].accepts.includes(ki)) return { do: 'no', why: '여기에는 놓을 수 없어요' };
+      return { do: 'put', item: held, goal: g };
+    }
+    return dropSpot(w, p, held) ? { do: 'drop', item: held } : { do: 'no', why: '여기는 내려놓을 자리가 없어요' };
   }
+}
+
+/** 빈손인 사람이 확인을 누르면: 가까운 장치를 쓰거나 물건을 든다. */
+function emptyAction(w: World, p: Player): ThingAction | null {
+  const s = w.stage.things;
+  // 그래프 조각·양동이를 들었거나 썰매에 탄 동안은 새 물건을 집거나 쓰지 않는다(두 개를 함께 들지 않게, 그 누름은 그래프 장치로 간다)
+  const g = w.g;
+  if (g && (holdingPiece(g, p.i) >= 0 || g.bucket?.holder === p.i || g.sled?.rider === p.i)) return null;
+  const reach = { x: p.x - 8, y: p.y - 6, w: p.w + 16, h: p.h + 10 };
+  // 선생님이 더한 움직임 가운데 확인으로 쓰는 것(가장 가까운 것 하나)
+  const use = nearestDevice(w, p);
+  if (use >= 0) return { do: 'use', item: use, text: deviceText(w, use, p) };
   let best = -1, near = Infinity;
   for (let i = 0; i < s.items.length; i++) {
     if (kindOf(w, i).body !== 'carry' || w.h.items[i].at !== 0 || !shown(w, i)) continue;
@@ -118,7 +149,8 @@ export function thingActionText(w: World, a: ThingAction) {
   return '확인: 내려놓기';
 }
 
-const home = (w: World, i: number) => { const it = w.stage.things.items[i], st = w.h.items[i]; st.x = it.x; st.y = it.y; st.vy = 0; st.at = 0; st.holder = -1; };
+/** 처음 자리로. 장치가 만들어 내는 물건(stock)은 다시 장치 안으로 돌아간다(안 보이고, 다시 give 로 나온다). */
+const home = (w: World, i: number) => { const it = w.stage.things.items[i], st = w.h.items[i]; st.x = it.x; st.y = it.y; st.vy = 0; st.at = kindOf(w, i).stock ? 1 : 0; st.holder = -1; };
 
 /** 든 물건을 처음 자리로 돌린다(떨어짐·문 들어감·방에서 나감). */
 export function thingsRelease(w: World, pi: number) {
@@ -141,12 +173,54 @@ function view(p: Player): BehaviorPlayer {
 export function ctxFor(w: World, i: number): BehaviorCtx {
   const st = w.h.items[i];
   return {
-    vars: st.v, rect: rectAt(w, i), t: w.t, players: w.players.length,
+    vars: st.v, rect: rectAt(w, i), t: w.t, players: w.players.length, takes: kindOf(w, i).takes, gives: kindOf(w, i).gives,
     isOn: ch => w.active.has(ch),
     respawn: q => { const p = w.players[q.i]; if (p) respawn(w, p); },
     launch: (q, cells) => { const p = w.players[q.i]; if (!p) return; p.vy = -Math.sqrt(2 * G * Math.max(2, Math.min(10, num(cells))) * T); p.on = false; p.coyote = 0; },
     remove: () => { st.at = 1; st.holder = -1; },
+    place: (x, y) => {
+      const k = kindOf(w, i);
+      if (k.move) return;
+      st.x = Math.max(0, Math.min(w.stage.cols * T - k.w, num(x)));
+      st.y = Math.max(-2 * T, Math.min(w.stage.rows * T - k.h, num(y)));
+    },
+    shove: (q, px) => {
+      const p = w.players[q.i]; if (!p || p.inDoor) return;
+      const d = Math.max(-60, Math.min(60, num(px))), n = Math.ceil(Math.abs(d)), sx = d / Math.max(1, n);
+      const free = (x: number) => { const r = { x, y: p.y, w: p.w, h: p.h }; return x >= 0 && x + p.w <= w.stage.cols * T && !hitsTiles(w, r) && !hitsBridge(w, r) && crateAt(w, r) < 0 && !thingSolidAt(w, r, p); };
+      for (let k = 0; k < n && free(p.x + sx); k++) p.x += sx;
+    },
+    holding: q => { const h = heldBy(w.h, q.i); return h >= 0 ? kindOf(w, h).id : null; },
+    take: q => {
+      const h = heldBy(w.h, q.i); if (h < 0) return null;
+      const hs = w.h.items[h]; hs.at = 1; hs.holder = -1; hs.vy = 0;
+      return kindOf(w, h).id;
+    },
+    give: (q, thing) => {
+      const p = w.players[q.i];
+      if (!p || p.inDoor || heldBy(w.h, q.i) >= 0 || typeof thing !== 'string') return false;
+      if (holdingPiece(w.g, q.i) >= 0 || w.g.bucket?.holder === q.i || w.g.sled?.rider === q.i) return false;
+      for (let j = 0; j < w.stage.things.items.length; j++) {
+        const k = kindOf(w, j), js = w.h.items[j];
+        if (k.id !== thing || !k.stock || js.at !== 1) continue;
+        js.at = 2; js.holder = q.i; js.vy = 0;
+        js.x = p.x + p.w / 2 - k.w / 2; js.y = p.y - k.h - 3;
+        return true;
+      }
+      return false;
+    },
+    peek: thing => {
+      for (let j = 0; j < w.stage.things.items.length; j++) if (kindOf(w, j).id === thing) return w.h.items[j].v.slice();
+      return null;
+    },
   };
+}
+/** 움직임이 정한 이름표(없거나 오류면 things.json 의 label). 그리기에 쓴다. */
+export function itemLabel(w: World, i: number): string {
+  const k = kindOf(w, i);
+  if (!k.behavior?.label) return k.label;
+  try { const t = k.behavior.label(ctxFor(w, i)); return t == null ? k.label : String(t).slice(0, 12); } catch { return k.label; }
+  finally { tidy(w.h.items[i].v); }
 }
 const tidy = (v: number[]) => { v.length = VARS; for (let k = 0; k < VARS; k++) v[k] = num(v[k]); };
 /** 움직임을 부른다. 움직임이 오류를 내도 판은 멈추지 않는다(그 걸음의 일만 건너뛴다). */
@@ -161,6 +235,16 @@ const broken = new WeakMap<World, Set<number>>();   // 세계마다 물건별로
 
 const bump = (w: World, ki: number) => w.stage.things.goals.forEach((g, gi) => { if (g.accepts.includes(ki)) w.h.counts[gi]++; });
 
+/** 놓기·내려놓기(장치가 아무것도 안 했을 때 대신 하는 일도 여기로 온다). */
+function doAction(w: World, p: Player, act: ThingAction) {
+  if (act.do === 'put') { const st = w.h.items[act.item]; st.at = 1; st.holder = -1; w.h.counts[act.goal]++; }
+  else if (act.do === 'drop') {
+    const st = w.h.items[act.item];
+    const at = dropSpot(w, p, act.item);
+    if (at) { st.at = 0; st.holder = -1; st.vy = 0; st.x = at.x; st.y = at.y; } else p.aNew = true;
+  } else if (act.do === 'pick') { const st = w.h.items[act.item]; st.at = 2; st.holder = p.i; st.vy = 0; }
+}
+
 /** 단추 계산 앞: 닿기(모으기·처음 자리로·튕기기), 들고 놓기, 내려놓은 물건 떨어지기. */
 export function thingTick(w: World, dt: number) {
   const s = w.stage.things;
@@ -172,13 +256,12 @@ export function thingTick(w: World, dt: number) {
     if (!act) continue;
     p.aNew = false;   // 쓴 누름은 지운다(움직임이 아무것도 안 했으면 아래에서 되살린다)
     if (act.do === 'pick') { const st = w.h.items[act.item]; st.at = 2; st.holder = p.i; st.vy = 0; }
-    else if (act.do === 'use') { if (call(w, act.item, ctx => kindOf(w, act.item).behavior!.use!(ctx, view(p))) !== true) p.aNew = true; }
-    else if (act.do === 'put') { const st = w.h.items[act.item]; st.at = 1; st.holder = -1; w.h.counts[act.goal]++; }
-    else if (act.do === 'drop') {
-      const st = w.h.items[act.item];
-      const at = dropSpot(w, p, act.item);
-      if (at) { st.at = 0; st.holder = -1; st.vy = 0; st.x = at.x; st.y = at.y; } else p.aNew = true;
+    else if (act.do === 'use') {
+      if (call(w, act.item, ctx => kindOf(w, act.item).behavior!.use!(ctx, view(p))) !== true) {
+        if (act.else) doAction(w, p, act.else); else p.aNew = true;
+      }
     }
+    else doAction(w, p, act);
   }
   // 든 사람이 문에 들어가면 처음 자리로
   for (const p of w.players) if (p.inDoor) thingsRelease(w, p.i);

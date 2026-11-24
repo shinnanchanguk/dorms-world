@@ -1,0 +1,30 @@
+{
+  "bread": {
+    "name": "빵",
+    "sprite": "bread",
+    "size": 3,
+    "body": "carry"
+  },
+  "mush": {
+    "name": "죽이 된 음식",
+    "sprite": "mush",
+    "size": 3,
+    "body": "carry",
+    "stock": true
+  },
+  "stomach": {
+    "name": "위",
+    "frames": [
+      "stomach-0",
+      "stomach-1",
+      "stomach-2",
+      "stomach-3"
+    ],
+    "size": 3,
+    "behavior": "grinder",
+    "takes": [
+      "bread"
+    ],
+    "gives": "mush"
+  }
+}

@@ -327,6 +327,8 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
     if (p.y > stage.rows * T + 60) respawn(w, p);   // 떨어지면 시작 자리로
   }
 
+  ropeTick(w);   // 줄 묶기: 줄보다 멀어진 친구끼리 당긴다
+
   // 상자: 한쪽에서 미는 사람이 맞은편보다 필요 인원만큼 많아야 움직인다(같은 수로 맞서면 멈춘다)
   w.crates.forEach((b, ci) => {
     const r = pushers(w, ci, 1), l = pushers(w, ci, -1);
@@ -421,6 +423,72 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
       else if (p.inDoor && pressed) { p.inDoor = false; p.doorLock = true; p.x = door.x + door.w / 2 - p.w / 2; p.y = door.y + door.h - p.h; p.vx = 0; p.vy = 0; }
     }
     if (w.players.length > 0 && w.players.every(p => p.inDoor)) w.won = true;
+  }
+}
+
+// ---------- 줄 묶기 (NN.json 의 rope) ----------
+/**
+ * 줄로 묶인 도름이 짝. pairs: 들어온 차례로 둘씩(0-1, 2-3 …, 혼자 남은 사람은 바로 앞 사람과 묶는다). chain: 모두 한 줄로.
+ * 문에 들어간 도름이는 줄에서 풀린다(먼저 들어가도 남은 친구를 붙잡지 않는다).
+ */
+export function ropeLinks(w: World): [Player, Player][] {
+  const r = w.stage.rope, ps = w.players;
+  if (!r || ps.length < 2) return [];
+  const out: [Player, Player][] = [];
+  if (r.link === 'chain') for (let i = 1; i < ps.length; i++) out.push([ps[i - 1], ps[i]]);
+  else {
+    for (let i = 0; i + 1 < ps.length; i += 2) out.push([ps[i], ps[i + 1]]);
+    if (ps.length % 2 === 1) out.push([ps[ps.length - 2], ps[ps.length - 1]]);
+  }
+  return out.filter(([a, b]) => !a.inDoor && !b.inDoor);
+}
+
+/** p 를 (dx, dy) 만큼 옮겨 본다. 땅·다리·상자·단단한 물건에 막히면 가로와 세로를 따로 막힌 데까지만 옮긴다. */
+function ropeShift(w: World, p: Player, dx: number, dy: number) {
+  if (p.on && dy > 0) dy = 0;   // 딛고 선 사람을 땅 속으로 당기지 않는다
+  const inside = hitsBridge(w, p);
+  const free = (x: number, y: number) => !blocked(w, { x, y, w: p.w, h: p.h }, inside, p) && x >= 0 && x + p.w <= w.stage.cols * T;
+  for (const [ax, ay] of [[dx, 0], [0, dy]] as const) {
+    if (!ax && !ay) continue;
+    if (free(p.x + ax, p.y + ay)) { p.x += ax; p.y += ay; continue; }
+    const n = Math.ceil(Math.abs(ax + ay)), sx = ax / n, sy = ay / n;
+    let k = 0;
+    for (; k < n && free(p.x + sx, p.y + sy); k++) { p.x += sx; p.y += sy; }
+    // 공중에 매달려 벽 쪽으로 끌리면 벽을 타고 조금씩 올라간다(턱 끝으로 끌어 올려지게)
+    if (ax && k < n && !p.on && ay === 0) for (let up = 0; up < 2 && free(p.x, p.y - 1); up++) { p.y -= 1; p.vy = Math.min(p.vy, 0); }
+  }
+}
+
+/**
+ * 줄보다 멀어진 짝을 서로 당긴다. 땅을 딛고 가만히 선 쪽은 거의 끌려가지 않아서(버팀) 매달린 친구를 붙잡아 주고,
+ * 걸어서 멀어지면 매달린 친구를 끌어 올린다. 되살아나 멀리 떨어진 짝(줄 길이의 세 배 넘게)은 걸어서 다가올 때까지 당기지 않는다.
+ */
+function ropeTick(w: World) {
+  const r = w.stage.rope;
+  if (!r) return;
+  const max = r.length * T, links = ropeLinks(w);
+  const mid = (p: Player) => [p.x + p.w / 2, p.y + p.h / 2] as const;
+  for (let it = 0; it < 3; it++) for (const [a, b] of links) {
+    let [ax, ay] = mid(a), [bx, by] = mid(b);
+    let d = Math.hypot(bx - ax, by - ay);
+    if (d <= max || d > max * 3) continue;
+    // 끌려가는 정도: 공중 1, 걸어가는 중 0.3, 땅에 버티고 선 사람 0.05
+    const grip = (p: Player) => (!p.on ? 1 : p.want ? 0.3 : 0.05);
+    const wa = grip(a), wb = grip(b), sum = wa + wb;
+    const ux = (bx - ax) / d, uy = (by - ay) / d, ex = d - max;
+    ropeShift(w, a, ux * ex * wa / sum, uy * ex * wa / sum);
+    ropeShift(w, b, -ux * ex * wb / sum, -uy * ex * wb / sum);
+    // 한쪽이 벽에 막혀 덜 갔으면 남은 만큼 다른 쪽이 끌려간다
+    for (const q of [b, a]) {
+      [ax, ay] = mid(a); [bx, by] = mid(b);
+      d = Math.hypot(bx - ax, by - ay);
+      if (d <= max + 0.01) break;
+      const e = d - max, vx = (bx - ax) / d, vy = (by - ay) / d;
+      if (q === b) ropeShift(w, b, -vx * e, -vy * e); else ropeShift(w, a, vx * e, vy * e);
+    }
+    // 서로 멀어지는 세로 속도는 줄이 받아 낸다(매달린 친구가 계속 빨라지며 떨어지지 않게)
+    const rel = (b.vy - a.vy) * uy;
+    if (rel > 0) { a.vy += uy * rel * wa / sum; b.vy -= uy * rel * wb / sum; }
   }
 }
 

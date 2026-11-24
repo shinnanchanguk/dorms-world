@@ -1,0 +1,50 @@
+{
+ "legend": {
+  "b": {
+   "type": "thing",
+   "thing": "bread"
+  },
+  "s": {
+   "type": "thing",
+   "thing": "stomach"
+  },
+  "m": {
+   "type": "thing",
+   "thing": "mush"
+  },
+  "g": {
+   "type": "goal",
+   "accepts": [
+    "mush"
+   ],
+   "need": 1,
+   "opens": [
+    "x"
+   ],
+   "label": "소장",
+   "sprite": "intestine"
+  },
+  "x": {
+   "type": "bridge"
+  },
+  "t": {
+   "type": "sign",
+   "texts": [
+    "빵을 들고 위로 가져가요. 짝과 줄로 묶여 있어요.",
+    "입에서 씹은 음식은 식도를 지나 위로 내려가요."
+   ]
+  },
+  "u": {
+   "type": "sign",
+   "texts": [
+    "위는 꿈틀거리며 음식을 잘게 부숴요. 친구와 번갈아 눌러요.",
+    "위액이 음식과 섞이면 죽처럼 돼요. 죽은 소장으로 가요."
+   ]
+  }
+ },
+ "hint": "빵을 위에 넣고 짝과 번갈아 부순 뒤, 죽을 소장에 놓아요.",
+ "rope": {
+  "length": 5,
+  "link": "pairs"
+ }
+}

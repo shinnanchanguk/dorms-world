@@ -588,6 +588,7 @@ export type PlayOpts = { seed?: number; budgetMs?: number; maxTries?: number };
 /** 스테이지 하나를 people 명으로 끝까지 깨 본다. */
 export function playStage(stage: Stage, people: number, opts: PlayOpts = {}): StageRun {
   const t0 = performance.now(), budget = opts.budgetMs ?? 8000;
+  if (stage.rope && people > 1) return { people, verdict: 'unknown', seconds: 0, note: `${people}명: 줄로 묶인 스테이지는 봇이 서로 당기며 움직이는 법을 몰라 확인하지 못해요. 사람이 직접 깨 보거나 tests/ 의 풀이 시험으로 끝까지 가는지 봐요.`, steps: [], ms: 0 };
   if (stage.graph.factories.length) return { people, verdict: 'unknown', seconds: 0, note: `${people}명: 그래프 공장 스테이지는 봇이 식을 몰라 확인하지 못해요. 사람이 직접 깨 보고, 풀이 시험(tests/graph-factory.test.ts)이 끝까지 가는지 봐요.`, steps: [], ms: 0 };
   const w = createWorld(stage, Array.from({ length: people }, () => ({ color: '#F4F7FF' })), opts.seed ?? 1);
   for (let f = 0; f < 40; f++) step(w, [], DT);

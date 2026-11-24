@@ -28,6 +28,9 @@ export type ThingKind = {
   with: string; without: string;  // 이 다리 글자가 켜진 동안만 있다 / 켜진 동안 사라진다
   behavior: Behavior | null;      // 선생님이 더한 새 움직임(platform/behaviors)
   opens: string[];                // 새 움직임이 켠 동안(vars[0] 이 0 이 아님) 켜지는 다리 글자
+  stock: boolean;                 // 들 수 있는 물건: 처음에는 안 보이고, 움직임의 give 로만 나온다(장치가 만들어 내는 물건)
+  takes: string[];                // 움직임이 받는 물건 이름들(ctx.takes)
+  gives: string;                  // 움직임이 내주는 물건 이름(ctx.gives, 없으면 '')
 };
 
 /** 지도에 놓인 물건 하나(밀림 물건은 상자로 바뀌어 stage.crates 에 들어간다). x, y 는 처음 자리(그림의 왼쪽 위). */
@@ -46,7 +49,7 @@ export const THING_KEYS: Record<string, string[]> = {
   thing: ['type', 'thing'],
   goal: ['type', 'accepts', 'need', 'opens', 'label', 'sprite'],
 };
-const KIND_KEYS = ['name', 'sprite', 'frames', 'size', 'body', 'touch', 'power', 'move', 'label', 'need', 'with', 'without', 'behavior', 'opens'];
+const KIND_KEYS = ['name', 'sprite', 'frames', 'size', 'body', 'touch', 'power', 'move', 'label', 'need', 'with', 'without', 'behavior', 'opens', 'stock', 'takes', 'gives'];
 export const MAX_KINDS = 30, MAX_ITEMS = 80, MAX_GOALS = 12;
 
 const pick = (sprites: Record<string, Sprite>, name: unknown) =>
@@ -113,10 +116,21 @@ export function parseKinds(json: unknown, sprites: Record<string, Sprite>): Reco
     const opens = d.opens ?? [];
     if (!Array.isArray(opens) || opens.length > 8 || opens.some(o => typeof o !== 'string' || !/^[a-z0-9]$/.test(o))) throw new Error(`${where} 의 opens 는 다리 글자 목록이에요(8개까지). 예: ["x"]`);
     if (opens.length && !behavior) throw new Error(`${where} 의 opens 는 behavior 를 붙인 물건에만 적어요(다리를 켜는 때를 움직임이 정해요).`);
+    if (d.stock != null && typeof d.stock !== 'boolean') throw new Error(`${where} 의 stock 은 true 나 false 예요.`);
+    if (d.stock && body !== 'carry') throw new Error(`${where}: stock(장치가 만들어 내는 물건)은 들 수 있는 물건(body "carry")에만 적어요.`);
+    const takes = d.takes ?? [];
+    if (!Array.isArray(takes) || takes.length > 8 || takes.some(t => typeof t !== 'string' || !/^[a-z0-9-]{1,40}$/.test(t))) throw new Error(`${where} 의 takes 는 받을 물건 이름 목록이에요(8개까지). 예: ["bread"]`);
+    if (d.gives != null && (typeof d.gives !== 'string' || !/^[a-z0-9-]{1,40}$/.test(d.gives))) throw new Error(`${where} 의 gives 는 내줄 물건 이름 하나예요. 예: "mush"`);
+    if ((takes.length || d.gives != null) && !behavior) throw new Error(`${where} 의 takes, gives 는 behavior 를 붙인 물건에만 적어요(받고 내주는 때를 움직임이 정해요).`);
     out[id] = {
       id, name: d.name.trim(), frames, cell, w: frames[0].w * cell, h: frames[0].h * cell, body, touch, power, move, label, need,
-      with: (d.with as string) ?? '', without: (d.without as string) ?? '', behavior, opens: opens as string[],
+      with: (d.with as string) ?? '', without: (d.without as string) ?? '', behavior, opens: opens as string[], stock: d.stock === true,
+      takes: takes as string[], gives: (d.gives as string) ?? '',
     };
+  }
+  for (const k of Object.values(out)) {
+    for (const t of k.takes) if (!Object.hasOwn(out, t) || out[t].body !== 'carry') throw new Error(`물건 "${k.id}" 의 takes "${t}" 는 things.json 의 들 수 있는 물건(body "carry")이어야 해요.`);
+    if (k.gives && (!Object.hasOwn(out, k.gives) || !out[k.gives].stock)) throw new Error(`물건 "${k.id}" 의 gives "${k.gives}" 는 things.json 에 "stock": true 로 적은 들 수 있는 물건이어야 해요.`);
   }
   return out;
 }
@@ -199,7 +213,7 @@ export const thingOpens = (s: ThingStage) => new Set([...s.goals.flatMap(g => g.
 export const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-1e6, Math.min(1e6, v)) : 0);
 
 export const createThingWorld = (s: ThingStage): ThingWorld => ({
-  items: s.items.map(it => { const b = s.kinds[it.kind].behavior; return { x: it.x, y: it.y, vy: 0, at: 0, holder: -1, v: Array.from({ length: VARS }, (_, k) => num(b?.init?.[k])) }; }),
+  items: s.items.map(it => { const b = s.kinds[it.kind].behavior; return { x: it.x, y: it.y, vy: 0, at: s.kinds[it.kind].stock ? 1 : 0, holder: -1, v: Array.from({ length: VARS }, (_, k) => num(b?.init?.[k])) }; }),
   counts: s.goals.map(() => 0),
 });
 
@@ -214,6 +228,7 @@ export function moveOffset(k: ThingKind, t: number): [number, number] {
 export function itemRect(s: ThingStage, tw: ThingWorld, i: number, t: number): Rect {
   const it = s.items[i], k = s.kinds[it.kind], st = tw.items[i];
   if (k.body === 'carry') return { x: st.x, y: st.y, w: k.w, h: k.h };
+  if (k.behavior && !k.move) return { x: st.x, y: st.y, w: k.w, h: k.h };   // 움직임이 place 로 옮길 수 있다
   const [dx, dy] = moveOffset(k, t);
   return { x: it.x + dx, y: it.y + dy, w: k.w, h: k.h };
 }
@@ -251,7 +266,7 @@ export type ThingAction =
   | { do: 'pick'; item: number }
   | { do: 'put'; item: number; goal: number }
   | { do: 'drop'; item: number }
-  | { do: 'use'; item: number; text: string }
+  | { do: 'use'; item: number; text: string; else?: ThingAction }   // else: 움직임이 아무것도 안 했을 때 대신 할 일(든 물건 내려놓기 등)
   | { do: 'no'; why: string };
 
 export const heldBy = (tw: ThingWorld, pi: number) => tw.items.findIndex(it => it.at === 2 && it.holder === pi);
