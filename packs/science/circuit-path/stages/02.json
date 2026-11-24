@@ -1,0 +1,37 @@
+{
+  "legend": {
+    "w": {
+      "type": "wire"
+    },
+    "b": {
+      "type": "source"
+    },
+    "l": {
+      "type": "lamp",
+      "opens": [
+        "x"
+      ],
+      "when": "on"
+    },
+    "m": {
+      "type": "lamp",
+      "opens": [
+        "y"
+      ],
+      "when": "on"
+    },
+    "c": {
+      "type": "contact"
+    },
+    "d": {
+      "type": "contact"
+    },
+    "x": {
+      "type": "bridge"
+    },
+    "y": {
+      "type": "bridge"
+    }
+  },
+  "hint": "끊긴 자리가 둘이에요. 누가 어디에 설지 정해요."
+}

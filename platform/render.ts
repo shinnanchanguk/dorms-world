@@ -3,6 +3,7 @@ import { ATLAS, BODY_SHADES, MOTION, PALETTE, SPRITES, VIEW_H, VIEW_W, type Spri
 import { T, type Stage } from './stage';
 import { actionAt, atDoor, bridgeSolid, createWorld, type Action, type Player, type World } from './sim';
 import { INKS, type Sprite } from './sprite';
+import { BRIGHT, LIT } from './circuit';
 import { itemRect, itemShown } from './things';
 import { ctxFor, thingActionAt, thingActionText } from './thing-sim';
 import { drawGraphBack, drawGraphFront, graphHud, latexText } from './graph/draw';
@@ -122,6 +123,7 @@ function drawStage(c: CanvasRenderingContext2D, w: World, now: number, me: numbe
     c.drawImage(spr(top ? 'tile' : 'soil'), cc * T, r * T, T, T);
   }
   for (const d of s.decos) drawSprite(c, d.sprite, d.x, d.y, 2);
+  drawCircuit(c, w, now);
   drawThings(c, w, now);
   drawGraphBack(c, s.graph, w.g, s.cols, s.rows, now);
   s.buttons.forEach((b, i) => {
@@ -164,6 +166,82 @@ function drawStage(c: CanvasRenderingContext2D, w: World, now: number, me: numbe
     if (say) label(c, say, Math.max(70, Math.min(s.cols * T - 70, p.x + p.w / 2)), p.y + p.h + 46);
     for (const g of s.signs) if (Math.abs(g.x + T / 2 - (p.x + p.w / 2)) < 50 && Math.abs(g.y - p.y) < 70) bubble(c, g.texts[me % g.texts.length], g.x + T / 2, g.y - 10);
   }
+}
+
+// ---------- 회로판 ----------
+/**
+ * 전선은 칸 가운데를 지나는 굵은 선(남색 테두리, 안은 파랑). 흐르는 칸은 노랗게 빛나고 물결처럼 밝기가 오르내린다.
+ * 흐르는 방향은 그리지 않는다(전류 방향을 잘못 보여 주지 않게). 전구는 밝기만큼 빛무리가 커지고, 합선된 전지에는 불꽃이 튄다.
+ * 접점 바닥에는 '여기 서요' 발판을 깐다.
+ */
+function drawCircuit(c: CanvasRenderingContext2D, w: World, now: number) {
+  const def = w.stage.circuit, st = w.circuit;
+  if (!def) return;
+  const H = 15;
+  const seg = (x: number, y: number, links: number, width: number, color: string) => {
+    const h = Math.floor(width / 2);
+    c.fillStyle = color;
+    c.fillRect(x + H - h, y + H - h, width, width);
+    if (links & 1) c.fillRect(x + H - h, y + H - h, T - H + h, width);
+    if (links & 2) c.fillRect(x, y + H - h, H + h, width);
+    if (links & 4) c.fillRect(x + H - h, y + H - h, width, T - H + h);
+    if (links & 8) c.fillRect(x + H - h, y, width, H + h);
+  };
+  // 전선(부품 칸도 양쪽 끝까지 선을 잇는다)
+  def.cells.forEach((cell, i) => {
+    const x = cell.c * T, y = cell.r * T, on = !!st && st.flow[i] > 1e-3;
+    seg(x, y, cell.links, 6, PALETTE.navy);
+    if (on) {
+      const wave = 0.55 + 0.45 * Math.sin(now / 140 - (cell.c + cell.r) * 0.8);
+      seg(x, y, cell.links, 2, PALETTE.key);
+      c.globalAlpha = wave; seg(x, y, cell.links, 4, PALETTE.key); c.globalAlpha = 1;
+    } else seg(x, y, cell.links, 2, PALETTE.outline);
+  });
+  def.parts.forEach((p, pi) => {
+    const cell = def.cells[p.cell], x = cell.c * T, y = cell.r * T, cx = x + H, cy = y + H;
+    const across = cell.links & 3 ? 'h' : 'v';   // 양 끝이 옆이면 가로로 놓인 부품
+    if (p.kind === 'source') {
+      // 전지: 긴 판(+)과 짧고 굵은 판. 선과 직각으로 선다
+      c.fillStyle = PALETTE.sky;
+      if (across === 'h') c.fillRect(cx - 5, y + 3, 10, T - 6); else c.fillRect(x + 3, cy - 5, T - 6, 10);
+      c.fillStyle = PALETTE.navy;
+      if (across === 'h') { c.fillRect(cx - 5, y + 3, 3, T - 6); c.fillRect(cx + 2, y + 9, 4, T - 18); c.fillRect(cx - 12, y + 4, 5, 1); c.fillRect(cx - 10, y + 2, 1, 5); }
+      else { c.fillRect(x + 3, cy - 5, T - 6, 3); c.fillRect(x + 9, cy + 2, T - 18, 4); c.fillRect(x + 4, cy - 10, 5, 1); c.fillRect(x + 6, cy - 12, 1, 5); }
+      if (st?.short[p.net] && Math.floor(now / 90) % 2) {
+        // 합선: 전지 둘레에 불꽃
+        c.fillStyle = PALETTE.button;
+        for (let k = 0; k < 6; k++) { const a = k * 1.05 + now / 200; c.fillRect(Math.round(cx + Math.cos(a) * 14) - 2, Math.round(cy + Math.sin(a) * 14) - 2, 4, 4); }
+        c.fillStyle = PALETTE.key;
+        for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.5 - now / 170; c.fillRect(Math.round(cx + Math.cos(a) * 9) - 1, Math.round(cy + Math.sin(a) * 9) - 1, 3, 3); }
+      }
+    } else if (p.kind === 'lamp') {
+      const li = def.lamps.indexOf(pi), pw = st ? st.power[li] : 0, lit = pw >= LIT, bright = pw >= BRIGHT;
+      if (lit) {
+        // 빛무리: 밝을수록 크고 진하다
+        const k = Math.min(1, pw);
+        c.fillStyle = PALETTE.key;
+        for (const [rad, a] of [[12 + 16 * k, 0.12 + 0.12 * k], [10 + 8 * k, 0.2 + 0.2 * k]] as const) { c.globalAlpha = a; c.beginPath(); c.arc(cx, cy, rad, 0, Math.PI * 2); c.fill(); }
+        c.globalAlpha = 1;
+      }
+      c.fillStyle = PALETTE.navy; c.beginPath(); c.arc(cx, cy, 11, 0, Math.PI * 2); c.fill();
+      c.fillStyle = bright ? PALETTE.key : PALETTE.paper; c.beginPath(); c.arc(cx, cy, 9, 0, Math.PI * 2); c.fill();
+      if (lit && !bright) { c.fillStyle = PALETTE.key; c.globalAlpha = 0.25 + 0.6 * pw / BRIGHT; c.beginPath(); c.arc(cx, cy, 9, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
+      // 필라멘트
+      c.fillStyle = lit ? PALETTE.button : PALETTE.outline;
+      c.fillRect(cx - 5, cy - 1, 3, 3); c.fillRect(cx - 2, cy - 4, 4, 3); c.fillRect(cx + 2, cy - 1, 3, 3);
+    } else {
+      // 접점: 끊긴 두 끝과, 바닥의 '여기 서요' 발판. 도름이가 서면 두 끝이 이어진다
+      const k = def.contacts.indexOf(pi), shut = !!w.closed[k];
+      c.fillStyle = PALETTE.sky;
+      if (across === 'h') c.fillRect(cx - 6, y + H - 4, 12, 8); else c.fillRect(x + H - 4, cy - 6, 8, 12);
+      c.fillStyle = PALETTE.navy;
+      if (across === 'h') { c.fillRect(cx - 9, cy - 4, 5, 8); c.fillRect(cx + 4, cy - 4, 5, 8); }
+      else { c.fillRect(cx - 4, cy - 9, 8, 5); c.fillRect(cx - 4, cy + 4, 8, 5); }
+      if (shut) { c.fillStyle = PALETTE.key; if (across === 'h') c.fillRect(cx - 4, cy - 2, 8, 4); else c.fillRect(cx - 2, cy - 4, 4, 8); }
+      c.fillStyle = PALETTE.navy; c.fillRect(x + 3, y + T - 5, T - 6, 5);
+      c.fillStyle = shut ? PALETTE.key : PALETTE.grass; c.fillRect(x + 5, y + T - 4, T - 10, 3);
+    }
+  });
 }
 
 // ---------- 판 아래 글(좁은 화면) ----------

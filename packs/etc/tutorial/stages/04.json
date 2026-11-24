@@ -1,0 +1,26 @@
+{
+  "legend": {
+    "w": {
+      "type": "wire"
+    },
+    "s": {
+      "type": "source"
+    },
+    "l": {
+      "type": "lamp",
+      "opens": [
+        "x"
+      ]
+    },
+    "c": {
+      "type": "contact"
+    },
+    "d": {
+      "type": "contact"
+    },
+    "x": {
+      "type": "bridge"
+    }
+  },
+  "hint": "접점에 서면 끊긴 전선이 이어져요. 전구가 밝게 켜지면 다리가 놓여요."
+}

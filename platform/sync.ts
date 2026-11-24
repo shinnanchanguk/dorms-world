@@ -1,12 +1,13 @@
 /**
  * 세계 요약. 방장만 물리를 돌리고, 손님은 방장이 초당 스무 번 보내는 요약을 받아 같은 그림을 그린다.
  * 요약은 화면에 보이는 것 전부와, 방장이 바뀌었을 때 새 방장이 그대로 이어 갈 수 있는 값(속도·그래프 장치의 시간들)을 담는다.
+ * 회로판은 싣지 않는다: 접점 위 도름이 자리로 손님이 같은 계산을 한다(다리가 켜졌는지는 켜진 다리 글자로 온다).
  * 여기는 순수한 계산뿐이다(화면도 연결도 모른다). 받은 요약은 남이 보낸 글이므로 모양을 검사하고 나서 쓴다.
  */
 import { applyGraphWire, graphToWire, readGWire, type GWire } from './graph/wire';
 import { colorFor } from './identity';
 import { MAX_SEATS } from './room-rules';
-import { NO_PAD, setPlayerCount, type Pad, type World } from './sim';
+import { NO_PAD, setPlayerCount, updateCircuit, type Pad, type World } from './sim';
 import { T } from './stage';
 import { VARS, num as clampNum } from './things';
 
@@ -108,6 +109,7 @@ export function applyWire(w: World, wire: Wire): boolean {
     it.x = inX(hw[o + 1]); it.y = inY(hw[o + 2]); it.vy = fast(hw[o + 3]);
     for (let k = 0; k < VARS; k++) it.v[k] = clampNum(hw[o + 4 + k]);
   });
+  updateCircuit(w);
   return true;
 }
 /** 속도는 물리가 내는 범위 안으로 자른다(방장이 바뀌어 이 세계를 이어 굴릴 때 터무니없는 속도가 남지 않게). */
@@ -153,6 +155,7 @@ export function blend(w: World, track: Track, now: number, dt: number): boolean 
   for (const pc of w.g.pieces) { const lead = pc.state === 'held' ? w.players[pc.holders[0]] : null; if (lead) { pc.x = lead.x + lead.w / 2; pc.y = lead.y - 3; } }
   const bk = w.g.bucket, bh = bk && bk.holder >= 0 ? w.players[bk.holder] : null;
   if (bk && bh) { bk.x = bh.x + bh.w / 2; bk.y = bh.y - 2; }
+  updateCircuit(w);   // 이어 그린 자리로 전구를 맞춘다(접점에 막 닿은 순간이 그림과 어긋나지 않게)
   return true;
 }
 

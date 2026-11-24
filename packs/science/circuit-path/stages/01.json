@@ -1,0 +1,23 @@
+{
+  "legend": {
+    "w": {
+      "type": "wire"
+    },
+    "b": {
+      "type": "source"
+    },
+    "l": {
+      "type": "lamp",
+      "opens": [
+        "x"
+      ]
+    },
+    "c": {
+      "type": "contact"
+    },
+    "x": {
+      "type": "bridge"
+    }
+  },
+  "hint": "끊긴 자리에 서면 전선이 이어져요. 불이 켜지면 계단이 생겨요."
+}

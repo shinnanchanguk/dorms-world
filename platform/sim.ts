@@ -3,6 +3,7 @@
  * 시안(design-lab/game.js)에서 형이 직접 해 본 움직임(속도·점프·서로 비켜 가기·머리 위 올라타기)을 옮겼다.
  */
 import { T, resolveNeed, type Rect, type Stage } from './stage';
+import { lampOn, solveCircuit, type CircuitState } from './circuit';
 import { createThingWorld, type ThingWorld } from './things';
 import { thingActive, thingAvoid, thingSolidAt, thingTick, thingsBefore, thingsRelease, thingsRemove } from './thing-sim';
 import { createGraph, graphActionAt, graphTick, holdingPiece, riderSpot, surfaceBelow, type GAction, type GraphWorld, type Host } from './graph/model';
@@ -56,6 +57,10 @@ export type World = {
   key: { x: number; y: number; holder: number | null; used: boolean };
   g: GraphWorld;                   // 그래프 공장 장치(조각·공·벌·썰매·목표)
   h: ThingWorld;                   // 새 물건(things.json)의 지금 모습
+  /** 회로판의 지금 모습(전구 밝기, 흐르는 칸, 합선). 회로가 없으면 null. 접점 위 도름이 자리로 언제나 다시 계산할 수 있다. */
+  circuit: CircuitState | null;
+  /** 접점마다 지금 이어졌는가(도름이가 서 있다). */
+  closed: boolean[];
   doorOpen: boolean;
   won: boolean;
   t: number;
@@ -66,7 +71,7 @@ export const overlap = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x 
 /** seed 는 공·벌이 오는 차례를 정하는 씨앗이다. */
 export function createWorld(stage: Stage, players: { color: string }[], seed = 1): World {
   const n = players.length;
-  return {
+  const w: World = {
     stage,
     players: players.map((p, i) => spawnPlayer(stage, i, p.color)),
     crates: stage.crates.map(c => ({ x: c.x, y: c.y, w: c.w, h: c.h, vy: 0, need: resolveNeed(c.need, n), pushers: 0 })),
@@ -76,8 +81,22 @@ export function createWorld(stage: Stage, players: { color: string }[], seed = 1
     key: { x: stage.key!.x, y: stage.key!.y, holder: null, used: false },
     g: createGraph(stage.graph, seed),
     h: createThingWorld(stage.things),
+    circuit: null, closed: [],
     doorOpen: false, won: false, t: 0,
   };
+  updateCircuit(w);
+  return w;
+}
+
+/** 접점 칸에서 도름이 몸이 닿는 자리(칸 양옆을 조금 줄여, 옆 칸에 선 도름이가 걸치지 않게). */
+export const contactRect = (c: number, r: number): Rect => ({ x: c * T + 5, y: r * T, w: T - 10, h: T });
+
+/** 접점 위 도름이를 보고 회로를 다시 계산한다. 방장은 걸음마다, 손님은 요약을 받을 때마다 부른다(같은 자리면 같은 답). */
+export function updateCircuit(w: World) {
+  const def = w.stage.circuit;
+  if (!def) { w.circuit = null; w.closed = []; return; }
+  w.closed = def.contacts.map(pi => { const cell = def.cells[def.parts[pi].cell], r = contactRect(cell.c, cell.r); return w.players.some(p => !p.inDoor && overlap(p, r)); });
+  w.circuit = solveCircuit(def, w.closed);
 }
 
 const cellSolid = (stage: Stage, c: number, r: number) => c < 0 || c >= stage.cols || r < 0 || (r < stage.rows && !!stage.solid[r * stage.cols + c]);
@@ -391,6 +410,10 @@ function tick(w: World, pads: (Pad | undefined)[], dt: number) {
 
   // 단추와 다리
   thingActive(w, ch => opened.add(ch));
+  // 회로판: 밝게(또는 켜지기만 하면 되는 전구는 켜지면) 켜진 전구가 다리를 연다
+  updateCircuit(w);
+  const def = stage.circuit;
+  if (def && w.circuit) for (const li of def.lamps) if (lampOn(def, w.circuit, li)) for (const ch of def.parts[li].opens) opened.add(ch);
   w.active = opened;
   stage.buttons.forEach((btn, bi) => {
     const n = w.players.filter(p => !p.inDoor && p.on && overlap({ x: p.x, y: p.y + 2, w: p.w, h: p.h }, btn)).length;

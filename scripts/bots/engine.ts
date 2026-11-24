@@ -4,6 +4,7 @@
  *   단추에 필요한 만큼 서 있기 · 상자 밀기 · 친구 머리 딛기(한 명) · 열쇠 · 문.
  *   그래프 공장 장치가 있는 스테이지는 봇이 식을 모르므로 '확인 못 함'으로 알린다(그 스테이지는 tests/ 의 풀이 시험이 본다).
  * 할 일의 차례는 봇이 찾는다: 해 볼 수 있는 일을 하나씩 실제로 굴려 보고, 나아지면 그 뒤를 잇고 막히면 되돌아간다.
+ * 회로판(접점에 서서 전구 켜기)이 여는 다리가 있는 스테이지에서 막히면 '확인 못 함'으로 알린다.
  * 친구 둘 이상을 쌓아야 닿는 자리처럼 봇이 못 하는 길만 남으면 '확인 못 함'으로 알린다(통과·실패로 꾸미지 않는다).
  * 브로콜리 검사(아무렇게나 누르는 봇이 깨면 안 된다)와는 목적이 다르다: 이것은 '풀 수 있게 만들어졌나'만 본다.
  */
@@ -629,6 +630,9 @@ export function playStage(stage: Stage, people: number, opts: PlayOpts = {}): St
     const open = th.goals.filter((g, gi) => s.w.h.counts[gi] < g.need).map(g => g.label || `'${g.ch}'`);
     return finish('unknown', `${people}명: ${where}. 새 물건이 있는 길(${th.kinds.filter(k => k.body !== 'push').map(k => k.name).join(', ')}${open.length ? `, 놓는 곳 ${open.join(', ')}` : ''})은 봇이 아직 다루지 못해요. 이 인원은 사람이 직접 깨 보세요.`, s);
   }
+  // 회로판(접점에 서서 전구 켜기)도 봇이 아직 다루지 못한다: 전구가 여는 다리가 있는 스테이지에서 막히면 못 깬다고 단정하지 않는다
+  const circ = s.w.stage.circuit;
+  if (circ && circ.lamps.some(i => circ.parts[i].opens.length)) return finish('unknown', `${people}명: ${where}. 회로판(접점에 서서 전구 켜기)은 봇이 아직 다루지 못해요. 이 인원은 사람이 직접 깨 보세요.`, s);
   if (needsTower(s)) return finish('unknown', `${people}명: ${where}. 친구 둘 이상을 쌓아야 닿는 자리가 있는데, 봇은 친구 한 명만 딛을 수 있어요. 이 인원은 사람이 직접 깨 보세요.`, s);
   const did = s.did.length ? ` 봇이 한 일: ${s.did.join(', ')}.` : '';
   const why = best.why.length ? ` 막힌 곳: ${best.why.slice(0, 4).join(' / ')}.` : '';

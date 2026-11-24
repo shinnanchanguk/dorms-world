@@ -1,0 +1,48 @@
+{
+  "id": "science/circuit-path",
+  "name": "불 켜진 길",
+  "tagline": "접점에 서서 회로를 이어요",
+  "family": "과학",
+  "schoolLevels": [
+    "중학교"
+  ],
+  "units": [
+    {
+      "band": "ms2",
+      "subject": "과학",
+      "unit": "전기와 자기"
+    }
+  ],
+  "educationalIntent": "전기와 자기 단원 도입. 내 몸으로 끊긴 회로를 이어 전구를 켜는 동안, 한 줄로 이은 회로는 하나만 끊겨도 모두 꺼지고 갈래로 이은 회로는 하나가 끊겨도 나머지가 켜져 있다는 것을 먼저 겪는다.",
+  "description": "전지와 전구가 그려진 회로판의 끊긴 자리에 도름이가 서면 전선이 이어져요. 전구가 켜지면 높은 선반의 열쇠까지 계단이 생겨요. 누가 어느 자리에 설지 모둠이 함께 정해요.",
+  "creator": {
+    "nickname": "전남온라인학교김우주",
+    "avatar": null
+  },
+  "players": {
+    "min": 3,
+    "max": 30
+  },
+  "stages": [
+    {
+      "file": "01",
+      "name": "불을 켜라",
+      "difficulty": 1
+    },
+    {
+      "file": "02",
+      "name": "한 줄 회로",
+      "difficulty": 2
+    },
+    {
+      "file": "03",
+      "name": "갈래 회로",
+      "difficulty": 2
+    },
+    {
+      "file": "04",
+      "name": "둘 다 밝게",
+      "difficulty": 3
+    }
+  ]
+}

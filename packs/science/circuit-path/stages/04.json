@@ -1,0 +1,38 @@
+{
+  "legend": {
+    "w": {
+      "type": "wire"
+    },
+    "b": {
+      "type": "source"
+    },
+    "l": {
+      "type": "lamp",
+      "opens": [
+        "x"
+      ]
+    },
+    "m": {
+      "type": "lamp",
+      "opens": [
+        "y"
+      ]
+    },
+    "c": {
+      "type": "contact"
+    },
+    "d": {
+      "type": "contact"
+    },
+    "e": {
+      "type": "contact"
+    },
+    "x": {
+      "type": "bridge"
+    },
+    "y": {
+      "type": "bridge"
+    }
+  },
+  "hint": "두 전구가 모두 밝아야 계단이 다 생겨요. 어디에 설까요?"
+}

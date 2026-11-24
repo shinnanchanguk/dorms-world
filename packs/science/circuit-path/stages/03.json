@@ -1,0 +1,29 @@
+{
+  "legend": {
+    "w": {
+      "type": "wire"
+    },
+    "b": {
+      "type": "source"
+    },
+    "l": {
+      "type": "lamp",
+      "opens": [
+        "x"
+      ]
+    },
+    "c": {
+      "type": "contact"
+    },
+    "d": {
+      "type": "contact"
+    },
+    "e": {
+      "type": "contact"
+    },
+    "x": {
+      "type": "bridge"
+    }
+  },
+  "hint": "접점이 셋이에요. 꼭 셋 다 서야 할까요?"
+}
