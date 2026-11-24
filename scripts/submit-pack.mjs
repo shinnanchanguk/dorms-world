@@ -1,7 +1,7 @@
 // 만든 팩을 도름스로 보낸다: npm run submit -- <교과>/<팩>      내 요청이 어떻게 됐는지: npm run submit -- --status
 // 하는 일: 검사 → 팩 파일 모으기 → (처음 한 번) 브라우저에서 도름스 로그인으로 이 컴퓨터를 허락 → 도름스에 보내기.
 // GitHub 계정은 필요 없다. 도름스가 받아 운영자에게 쪽지를 보내고, 운영자가 해 본 뒤 승인하면 도름스 월드와 오락실에 실린다.
-// 팩 폴더의 자료와, 새 장치를 만들려고 고친 판 코드(platform/, src/, tests/, kit/, public/)를 함께 보낸다.
+// 팩 폴더의 자료와, 새 장치를 만들려고 고친 판 코드(platform/, src/, tests/, kit/)를 함께 보낸다.
 // 판 코드는 운영자가 살펴본 뒤 저장소에 요청(PR)으로 들어가 실린다(scripts/code-files.mjs).
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';

@@ -44,7 +44,7 @@ describe('승인된 팩 싣기: 함께 온 판 코드', () => {
     expect(problemOf(withCode({ 'code/.deleted': 'platform/old.ts', 'code/platform/new.ts': '//' }))).toBe('');
   });
   it('약속 밖의 자리, 숨김 파일, 실행될 수 있는 그림은 싣지 않는다', () => {
-    for (const bad of ['code/.github/workflows/a.yml', 'code/scripts/publish-approved.mjs', 'code/package.json', 'code/platform/../scripts/x.mjs', 'code/platform/.env', 'code/public/x.svg', 'code/public/a.html', 'code/platform/-x.ts', 'code/vite.config.ts', 'code/room-server/src/index.ts', 'code/platform']) {
+    for (const bad of ['code/.github/workflows/a.yml', 'code/scripts/publish-approved.mjs', 'code/package.json', 'code/platform/../scripts/x.mjs', 'code/platform/.env', 'code/public/x.svg', 'code/public/a.html', 'code/platform/-x.ts', 'code/vite.config.ts', 'code/room-server/src/index.ts', 'code/platform', 'code/public/x.js', 'code/tests/packs.test.ts', 'code/tests/behaviors-rules.test.ts', 'code/tests/pack-io.ts', 'code/platform/behavior.ts']) {
       expect(problemOf(withCode({ [bad]: 'x' })), bad).toContain('둘 수 없는 판 파일');
     }
   });
