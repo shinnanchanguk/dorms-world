@@ -146,11 +146,13 @@ if (total > MAX_TOTAL) stop(`팩이 너무 커요(${Math.round(total / 1000)}KB,
 const git = (...a) => { const r = spawnSync('git', a, { encoding: 'utf8' }); return r.status === 0 ? (r.stdout ?? '').trim() : null; };
 const norm = t => t.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
 let codeCount = 0, codeBytes = 0;
-if (!args.includes('--pack-only') && git('rev-parse', '--is-inside-work-tree') === 'true') {
+const inGit = git('rev-parse', '--is-inside-work-tree') === 'true';
+if (!inGit && !args.includes('--pack-only')) say('  이 폴더는 git 으로 내려받은 것이 아니라 고친 판 코드를 가려내지 못해요. 팩 파일만 보내요(판 코드도 보내려면 git clone 으로 다시 내려받아 주세요).');
+if (!args.includes('--pack-only') && inGit) {
   const remote = (git('remote') ?? '').split('\n').find(r => /shinnanchanguk\/dorms-world(\.git)?$/.test(git('remote', 'get-url', r) ?? '')) ?? 'origin';
   git('fetch', '-q', remote, 'main');   // 인터넷이 안 되면 가진 것으로 견준다
   const base = git('merge-base', 'HEAD', `${remote}/main`) ?? git('rev-parse', 'HEAD');
-  const tracked = (git('diff', '--name-only', base, '--', ...CODE_ROOTS) ?? '').split('\n');
+  const tracked = (git('diff', '--no-renames', '--name-only', base, '--', ...CODE_ROOTS) ?? '').split('\n');
   const untracked = (git('ls-files', '--others', '--exclude-standard', '--', ...CODE_ROOTS) ?? '').split('\n');
   const changed = [...new Set([...tracked, ...untracked])].filter(Boolean).sort();
   const sendCode = {}, deleted = [], cannot = [];
