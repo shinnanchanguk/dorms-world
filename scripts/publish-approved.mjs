@@ -74,7 +74,12 @@ async function waitCheck(pr, head) {
   while (Date.now() < until) {
     await sleep(8000);
     const held = tryly('gh', ['api', `repos/${REPO}/actions/runs?head_sha=${head}&status=action_required`, '--jq', '.workflow_runs[].id']).split('\n').filter(v => /^\d+$/.test(v));
-    for (const id of held) if (!approved.has(id)) { approved.add(id); const ok = tryly('gh', ['api', '-X', 'POST', `repos/${REPO}/actions/runs/${id}/approve`]); console.log(`  잡혀 있던 검사 실행 ${id} 를 돌려요.`); void ok; }
+    for (const id of held) {
+      if (approved.has(id)) continue;
+      // 승인 요청이 GitHub 5xx 로 실패하면 다음 차례에 다시 한다(요청 4번 실측: 승인이 500 으로 빠져 검사가 끝까지 안 돌았다)
+      try { sh('gh', ['api', '-X', 'POST', `repos/${REPO}/actions/runs/${id}/approve`]); approved.add(id); console.log(`  잡혀 있던 검사 실행 ${id} 를 돌려요.`); }
+      catch { console.log(`  검사 실행 ${id} 승인이 아직 안 돼 다시 해 봐요.`); }
+    }
     let view = {};
     try { view = JSON.parse(tryly('gh', ['pr', 'view', pr, '-R', REPO, '--json', 'mergeStateStatus,headRefOid,statusCheckRollup']) || '{}'); } catch { /* 잠깐 못 읽으면 다시 */ }
     if (view.headRefOid && view.headRefOid !== head) return { ok: false, why: '요청의 내용이 그새 바뀌었어요.' };
