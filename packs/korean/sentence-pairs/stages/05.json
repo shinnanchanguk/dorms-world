@@ -1,0 +1,192 @@
+{
+  "legend": {
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "j"
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "m"
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "k"
+      ]
+    },
+    "d": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "l"
+      ]
+    },
+    "e": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "p"
+      ]
+    },
+    "f": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "q"
+      ]
+    },
+    "g": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "n"
+      ]
+    },
+    "h": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "o"
+      ]
+    },
+    "i": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "t",
+        "u"
+      ]
+    },
+    "j": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "k": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "l": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "m": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "n": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "o": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "p": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "q": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "t": {
+      "type": "bridge"
+    },
+    "u": {
+      "type": "bridge"
+    },
+    "v": {
+      "type": "sign",
+      "texts": [
+        "덮개 발판은 그 밑 두 낱말을 한 덩어리로 묶어요"
+      ]
+    },
+    "w": {
+      "type": "sign",
+      "texts": [
+        "짝이 없는 말을 누가 밟고 있으면 상자가 안 내려가요"
+      ]
+    },
+    "x": {
+      "type": "sign",
+      "texts": [
+        "토끼는 앞발이 짧다."
+      ]
+    },
+    "0": {
+      "type": "sign",
+      "texts": [
+        "토끼는"
+      ]
+    },
+    "1": {
+      "type": "sign",
+      "texts": [
+        "앞발이"
+      ]
+    },
+    "2": {
+      "type": "sign",
+      "texts": [
+        "짧다"
+      ]
+    },
+    "3": {
+      "type": "sign",
+      "texts": [
+        "앞발이 짧다"
+      ]
+    },
+    "4": {
+      "type": "sign",
+      "texts": [
+        "냄새가 좋고 맛이 있다."
+      ]
+    },
+    "5": {
+      "type": "sign",
+      "texts": [
+        "냄새가"
+      ]
+    },
+    "6": {
+      "type": "sign",
+      "texts": [
+        "좋고"
+      ]
+    },
+    "7": {
+      "type": "sign",
+      "texts": [
+        "맛이"
+      ]
+    },
+    "8": {
+      "type": "sign",
+      "texts": [
+        "있다"
+      ]
+    },
+    "9": {
+      "type": "sign",
+      "texts": [
+        "맛이 있다"
+      ]
+    },
+    "z": {
+      "type": "crate"
+    },
+    "y": {
+      "type": "deco",
+      "sprite": "plug"
+    }
+  },
+  "hint": "덮개 발판은 그 밑 두 낱말을 한 덩어리로 묶어요. 누구의 짝일까요?"
+}

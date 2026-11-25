@@ -1,0 +1,157 @@
+{
+  "legend": {
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "i"
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "j"
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "h"
+      ]
+    },
+    "d": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "m",
+        "n"
+      ]
+    },
+    "e": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "k"
+      ]
+    },
+    "f": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "l"
+      ]
+    },
+    "g": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "o"
+      ]
+    },
+    "h": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "i": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "j": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "k": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "l": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "m": {
+      "type": "bridge"
+    },
+    "n": {
+      "type": "bridge"
+    },
+    "o": {
+      "type": "bridge"
+    },
+    "p": {
+      "type": "sign",
+      "texts": [
+        "두 문장의 ‘와’를 견주어 보세요"
+      ]
+    },
+    "q": {
+      "type": "sign",
+      "texts": [
+        "짝이 없는 말을 누가 밟고 있으면 상자가 안 내려가요"
+      ]
+    },
+    "r": {
+      "type": "sign",
+      "texts": [
+        "철수와 영희는 빵을 좋아한다."
+      ]
+    },
+    "s": {
+      "type": "sign",
+      "texts": [
+        "철수와"
+      ]
+    },
+    "t": {
+      "type": "sign",
+      "texts": [
+        "영희는"
+      ]
+    },
+    "u": {
+      "type": "sign",
+      "texts": [
+        "빵을"
+      ]
+    },
+    "v": {
+      "type": "sign",
+      "texts": [
+        "좋아한다"
+      ]
+    },
+    "w": {
+      "type": "sign",
+      "texts": [
+        "철수가 영수와 싸웠다."
+      ]
+    },
+    "x": {
+      "type": "sign",
+      "texts": [
+        "철수가"
+      ]
+    },
+    "0": {
+      "type": "sign",
+      "texts": [
+        "영수와"
+      ]
+    },
+    "1": {
+      "type": "sign",
+      "texts": [
+        "싸웠다"
+      ]
+    },
+    "z": {
+      "type": "crate"
+    },
+    "y": {
+      "type": "deco",
+      "sprite": "plug"
+    }
+  },
+  "hint": "두 문장의 ‘와’를 견주어 보세요. 상자 수만큼 짝을 찾아요"
+}
