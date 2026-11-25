@@ -1,0 +1,144 @@
+{
+  "legend": {
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "g"
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "h"
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "i"
+      ]
+    },
+    "d": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "l"
+      ]
+    },
+    "e": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "j"
+      ]
+    },
+    "f": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "k"
+      ]
+    },
+    "g": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "h": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "i": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "j": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "k": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "l": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "p": {
+      "type": "sign",
+      "texts": [
+        "발판 옆에 서면 낱말이 보여요. 주어와 서술어 짝을 찾아요"
+      ]
+    },
+    "q": {
+      "type": "sign",
+      "texts": [
+        "짝인 두 발판에 둘이 서면 바로 앞 터널 상자가 내려가요"
+      ]
+    },
+    "r": {
+      "type": "sign",
+      "texts": [
+        "한 기기로 할 때는 Tab 으로 도름이를 바꿔 세워요"
+      ]
+    },
+    "s": {
+      "type": "sign",
+      "texts": [
+        "배가 고프다."
+      ]
+    },
+    "t": {
+      "type": "sign",
+      "texts": [
+        "배가"
+      ]
+    },
+    "u": {
+      "type": "sign",
+      "texts": [
+        "고프다"
+      ]
+    },
+    "v": {
+      "type": "sign",
+      "texts": [
+        "우리는 수업 시간이 끝나기를 기다렸다."
+      ]
+    },
+    "w": {
+      "type": "sign",
+      "texts": [
+        "우리는"
+      ]
+    },
+    "x": {
+      "type": "sign",
+      "texts": [
+        "수업 시간이"
+      ]
+    },
+    "0": {
+      "type": "sign",
+      "texts": [
+        "끝나기를"
+      ]
+    },
+    "1": {
+      "type": "sign",
+      "texts": [
+        "기다렸다"
+      ]
+    },
+    "z": {
+      "type": "crate"
+    },
+    "y": {
+      "type": "deco",
+      "sprite": "plug"
+    }
+  },
+  "hint": "주어 발판과 그 짝인 서술어 발판에 함께 서면 터널을 막은 상자가 내려가요"
+}

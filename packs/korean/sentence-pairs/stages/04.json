@@ -1,0 +1,150 @@
+{
+  "legend": {
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "h"
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "i"
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "j"
+      ]
+    },
+    "d": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "k"
+      ]
+    },
+    "e": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "l"
+      ]
+    },
+    "f": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "l"
+      ]
+    },
+    "g": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "o"
+      ]
+    },
+    "h": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "i": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "j": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "k": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "l": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "o": {
+      "type": "bridge"
+    },
+    "p": {
+      "type": "sign",
+      "texts": [
+        "서술어처럼 보이는 말이 둘이에요. 따로 셀까, 하나로 셀까"
+      ]
+    },
+    "q": {
+      "type": "sign",
+      "texts": [
+        "짝이 없는 말을 누가 밟고 있으면 상자가 안 내려가요"
+      ]
+    },
+    "r": {
+      "type": "sign",
+      "texts": [
+        "가을 하늘이 높고 푸르다."
+      ]
+    },
+    "s": {
+      "type": "sign",
+      "texts": [
+        "가을 하늘이"
+      ]
+    },
+    "t": {
+      "type": "sign",
+      "texts": [
+        "높고"
+      ]
+    },
+    "u": {
+      "type": "sign",
+      "texts": [
+        "푸르다"
+      ]
+    },
+    "v": {
+      "type": "sign",
+      "texts": [
+        "철수는 학교로 가고 있다."
+      ]
+    },
+    "w": {
+      "type": "sign",
+      "texts": [
+        "철수는"
+      ]
+    },
+    "x": {
+      "type": "sign",
+      "texts": [
+        "학교로"
+      ]
+    },
+    "0": {
+      "type": "sign",
+      "texts": [
+        "가고"
+      ]
+    },
+    "1": {
+      "type": "sign",
+      "texts": [
+        "있다"
+      ]
+    },
+    "z": {
+      "type": "crate"
+    },
+    "y": {
+      "type": "deco",
+      "sprite": "plug"
+    }
+  },
+  "hint": "서술어처럼 보이는 말이 둘이에요. 따로 셀까요, 하나로 셀까요?"
+}

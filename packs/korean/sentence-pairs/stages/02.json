@@ -1,0 +1,160 @@
+{
+  "legend": {
+    "a": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "i"
+      ]
+    },
+    "b": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "h"
+      ]
+    },
+    "c": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "j"
+      ]
+    },
+    "d": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "k"
+      ]
+    },
+    "e": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "l"
+      ]
+    },
+    "f": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "m"
+      ]
+    },
+    "g": {
+      "type": "button",
+      "need": 1,
+      "opens": [
+        "p"
+      ]
+    },
+    "h": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "i": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "j": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "k": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "l": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "m": {
+      "type": "bridge",
+      "mode": "vanish"
+    },
+    "p": {
+      "type": "bridge"
+    },
+    "q": {
+      "type": "sign",
+      "texts": [
+        "짝이 없는 낱말도 있어요. 터널 상자 수만큼 짝을 찾아요"
+      ]
+    },
+    "r": {
+      "type": "sign",
+      "texts": [
+        "짝이 없는 말을 누가 밟고 있으면 상자가 안 내려가요"
+      ]
+    },
+    "s": {
+      "type": "sign",
+      "texts": [
+        "단단한 땅에 물이 괸다."
+      ]
+    },
+    "t": {
+      "type": "sign",
+      "texts": [
+        "단단한"
+      ]
+    },
+    "u": {
+      "type": "sign",
+      "texts": [
+        "땅에"
+      ]
+    },
+    "v": {
+      "type": "sign",
+      "texts": [
+        "물이"
+      ]
+    },
+    "w": {
+      "type": "sign",
+      "texts": [
+        "괸다"
+      ]
+    },
+    "x": {
+      "type": "sign",
+      "texts": [
+        "그는 새 신발을 샀다."
+      ]
+    },
+    "0": {
+      "type": "sign",
+      "texts": [
+        "그는"
+      ]
+    },
+    "1": {
+      "type": "sign",
+      "texts": [
+        "새"
+      ]
+    },
+    "2": {
+      "type": "sign",
+      "texts": [
+        "신발을"
+      ]
+    },
+    "3": {
+      "type": "sign",
+      "texts": [
+        "샀다"
+      ]
+    },
+    "z": {
+      "type": "crate"
+    },
+    "y": {
+      "type": "deco",
+      "sprite": "plug"
+    }
+  },
+  "hint": "짝이 없는 낱말도 있어요. 터널의 상자 수만큼 짝을 찾아요"
+}
