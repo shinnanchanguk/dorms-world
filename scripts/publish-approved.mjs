@@ -175,7 +175,16 @@ export async function publish(item) {
     tryly('gh', ['pr', 'close', pr, '-R', REPO, '--delete-branch', '--comment', why.slice(0, 500)]);
     return { result: 'failed', reason: why.slice(0, 500) };
   }
-  sh('gh', ['pr', 'merge', pr, '-R', REPO, '--squash', '--match-head-commit', head, '--delete-branch']);
+  // 검사가 막 끝난 순간에는 GitHub 가 규칙(필수 검사)을 아직 다시 따지지 않아 'base branch policy prohibits the merge' 로 거절한다
+  // (요청 4번 실측: 검사 완료 1초 뒤 병합이 거절돼 '싣다가 막힘'). 그 거절만 잠깐씩 기다리며 다시 해 본다.
+  for (let i = 0; ; i++) {
+    try { sh('gh', ['pr', 'merge', pr, '-R', REPO, '--squash', '--match-head-commit', head, '--delete-branch']); break; }
+    catch (err) {
+      if (i >= 5 || !/base branch policy prohibits the merge|not mergeable/i.test(String(err.stderr || err.message))) throw err;
+      console.log(`  GitHub 가 아직 병합을 받지 않아 ${15 * (i + 1)}초 뒤 다시 해 봐요.`);
+      await sleep(15_000 * (i + 1));
+    }
+  }
   let commit = '';
   for (let i = 0; i < 12 && !/^[0-9a-f]{40}$/.test(commit); i++) { await sleep(2500); commit = tryly('gh', ['pr', 'view', pr, '-R', REPO, '--json', 'mergeCommit', '--jq', '.mergeCommit.oid // ""']); }
   if (!/^[0-9a-f]{40}$/.test(commit)) return { result: 'failed', reason: '병합은 했는데 실린 커밋을 찾지 못했어요. 저장소를 확인해 주세요.' };
