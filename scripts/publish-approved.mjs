@@ -180,7 +180,9 @@ export async function publish(item) {
   for (let i = 0; ; i++) {
     try { sh('gh', ['pr', 'merge', pr, '-R', REPO, '--squash', '--match-head-commit', head, '--delete-branch']); break; }
     catch (err) {
-      if (i >= 5 || !/base branch policy prohibits the merge|not mergeable/i.test(String(err.stderr || err.message))) throw err;
+      // 병합 요청이 GitHub 502 등으로 끊겨도 실제로는 병합됐을 수 있다(요청 4번 두 번째 시도 실측). 먼저 상태를 본다.
+      if (tryly('gh', ['pr', 'view', pr, '-R', REPO, '--json', 'state', '--jq', '.state']) === 'MERGED') break;
+      if (i >= 5 || !/base branch policy prohibits the merge|not mergeable|50[234]|Bad Gateway|timed? ?out|ECONNRESET/i.test(String(err.stderr || err.message))) throw err;
       console.log(`  GitHub 가 아직 병합을 받지 않아 ${15 * (i + 1)}초 뒤 다시 해 봐요.`);
       await sleep(15_000 * (i + 1));
     }
